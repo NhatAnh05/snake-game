@@ -8,6 +8,7 @@ import javax.swing.Timer; // Nhớ import cái này của Swing nhé
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 
+
 public class GameController {
     private GameModel model;
     private GameUI view;
@@ -17,7 +18,7 @@ public class GameController {
         this.model = model;
         this.view = view;
 
-        // TẠO GAME LOOP: Cứ 150 mili-giây sẽ chạy đống code bên trong 1 lần
+
         gameLoop = new Timer(150, e -> {
             if (model.getCurrentState() == GameState.PLAYING) {
                 model.getSnake().move(); // Bắt rắn nhích 1 bước
@@ -41,17 +42,16 @@ public class GameController {
     private void handleInput(KeyEvent e) {
         int key = e.getKeyCode();
 
-        // 1. Nhấn ENTER để bắt đầu
+
         if (model.getCurrentState() == GameState.MENU && key == KeyEvent.VK_ENTER) {
             model.prepareNewGame();
             gameLoop.start(); // Kích hoạt động cơ cho rắn chạy!
         }
 
-        // 2. NHẬN PHÍM ĐIỀU HƯỚNG (Chỉ khi đang PLAYING)
         if (model.getCurrentState() == GameState.PLAYING) {
             String currentDir = model.getSnake().getDirection();
 
-            // Logic: Nếu đang đi LÊN thì không được bẻ lái XUỐNG ngay lập tức (sẽ tự cắn thân)
+
             if (key == KeyEvent.VK_UP && !currentDir.equals("DOWN")) {
                 model.getSnake().setDirection("UP");
             }

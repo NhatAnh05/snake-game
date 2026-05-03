@@ -5,7 +5,7 @@ import java.util.List;
 
 public class Snake {
     private List<Point> body = new ArrayList<>();
-    // Trong sơ đồ bạn để Direction là một thuộc tính
+
     private String direction;
 
     public void reset(int x, int y) {

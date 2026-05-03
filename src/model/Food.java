@@ -7,7 +7,7 @@ public class Food {
 
     public void spawn(List<Point> snakeBody) {
         Random r = new Random();
-        // Logic đơn giản: tạo tọa độ ngẫu nhiên trong lưới 30x30
+
         this.position = new Point(r.nextInt(30), r.nextInt(30));
     }
 

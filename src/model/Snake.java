@@ -9,7 +9,7 @@ public class Snake {
 
     public void reset(int x, int y) {
         body.clear();
-        direction = Direction.RIGHT;
+        direction =Direction.RIGHT;
         body.add(new Point(x, y));
         body.add(new Point(x - 1, y));
         body.add(new Point(x - 2, y));

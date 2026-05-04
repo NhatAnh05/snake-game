@@ -20,6 +20,9 @@ public class GameController {
 
         this.gameLoop = new Timer(150, event -> updateGame());
         this.view.addKeyListener(inputHandler);
+        this.view.getGamePanel().setOnStartAction(() -> {
+            handleStartOrRestartRequest();
+        });
     }
 
     public void startGame() {

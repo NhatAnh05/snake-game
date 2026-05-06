@@ -390,9 +390,14 @@ public class GamePanel extends JPanel {
     private void drawOverlay(Graphics2D g2d, String msg, Color color) {
         g2d.setColor(new Color(0, 0, 0, 180));
         g2d.fillRect(0, 0, getWidth(), getHeight());
-        drawText(g2d, msg, getWidth()/2, getHeight()/2, 60, color);
-    }
+        drawText(g2d, msg, getWidth()/2, getHeight()/2 - 50, 60, color);
 
+        g2d.setFont(new Font("SansSerif", Font.PLAIN, 20));
+        g2d.setColor(Color.WHITE);
+        g2d.drawString("Nhấn [ ENTER ] để chơi lại", getWidth()/2 - 120, getHeight()/2 + 40);
+        g2d.drawString("Nhấn [ ESC ] để về Menu chính", getWidth()/2 - 125, getHeight()/2 + 80);
+    }
+    
     private void drawLoading(Graphics2D g2d) {
         g2d.setColor(Color.BLACK);
         g2d.fillRect(0, 0, getWidth(), getHeight());

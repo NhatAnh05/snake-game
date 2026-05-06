@@ -21,6 +21,11 @@ public class InputHandler extends KeyAdapter {
             controller.handleStartOrRestartRequest();
             return;
         }
+        
+        if (currentKeyCode == KeyEvent.VK_ESCAPE) {
+        	controller.backToMenu();
+            return;
+        }
 
         Direction newDirection = mapKeyToDirection(currentKeyCode);
         if (newDirection != null) {

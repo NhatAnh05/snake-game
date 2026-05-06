@@ -15,7 +15,7 @@ public class GameModel {
 
 
     public void prepareNewGame() {
-        snake.reset(15, 15);
+        snake.reset(20, 15);
         food.spawn(snake.getBody());
         scoreManager.resetScore();
         this.currentState = GameState.PLAYING;

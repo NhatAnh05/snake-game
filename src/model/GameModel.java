@@ -5,6 +5,7 @@ public class GameModel {
     private Food food;
     private ScoreManager scoreManager;
     private GameState currentState;
+    
     public GameModel() {
         this.snake = new Snake();
         this.food = new Food();

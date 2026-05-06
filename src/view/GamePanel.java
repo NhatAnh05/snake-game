@@ -397,7 +397,7 @@ public class GamePanel extends JPanel {
         g2d.drawString("Nhấn [ ENTER ] để chơi lại", getWidth()/2 - 120, getHeight()/2 + 40);
         g2d.drawString("Nhấn [ ESC ] để về Menu chính", getWidth()/2 - 125, getHeight()/2 + 80);
     }
-    
+
     private void drawLoading(Graphics2D g2d) {
         g2d.setColor(Color.BLACK);
         g2d.fillRect(0, 0, getWidth(), getHeight());

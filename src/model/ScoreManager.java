@@ -9,7 +9,7 @@ public class ScoreManager {
         this.highScore = 0;
     }
 
- // Hàm tăng điểm khi ăn mồi
+    // Hàm tăng điểm khi ăn mồi
     public void increaseScore() {
         currentScore += 10; // Mỗi lần ăn tăng 10 điểm
         if (currentScore > highScore) {

@@ -25,7 +25,9 @@ public class GameController {
         this.collisionManager = new CollisionManager(40, 30);
 
         this.gameLoop = new Timer(150, event -> updateGame());
+
         this.view.addKeyListener(inputHandler);
+
         this.view.getGamePanel().setOnStartAction(() -> {
             handleStartOrRestartRequest();
         });
@@ -40,8 +42,10 @@ public class GameController {
     public void handleStartOrRestartRequest() {
         if (model.getCurrentState() == GameState.MENU
                 || model.getCurrentState() == GameState.GAME_OVER) {
+
             model.prepareNewGame();
             gameLoop.start();
+
             view.render(model);
             view.requestFocusInWindow();
         }
@@ -67,25 +71,30 @@ public class GameController {
     }
 
     private void updateGame() {
-       if (!isGamePlaying()) return;
-
-        Snake snake = model.getSnake();
-        Point head = snake.getHead();
-        Point foodPos = model.getFood().getPosition();
-
-        // 1. Kiểm tra xem bước tiếp theo có ăn mồi không
-        boolean willEat = head.equals(foodPos); 
-
-        // 2. Di chuyển rắn (nếu ăn mồi thì grow = true)
-        snake.move(willEat); 
-
-        // 3. Nếu ăn mồi, xử lý tăng điểm và tạo mồi mới
-        if (willEat) {
-            model.getScoreManager().increaseScore(); 
-            model.getFood().spawn(snake.getBody()); 
+        if (!isGamePlaying()) {
+            return;
         }
 
-        // 4. Kiểm tra va chạm chết (tường/thân) sau khi di chuyển
+        Snake snake = model.getSnake();
+        Point foodPos = model.getFood().getPosition();
+
+        /*
+         * Kiểm tra ô tiếp theo của đầu rắn.
+         * Nếu ô tiếp theo trùng với food thì rắn sẽ ăn mồi.
+         */
+        Point nextHead = getNextHead(snake);
+        boolean willEat = foodPos != null && nextHead.equals(foodPos);
+
+        // Di chuyển rắn
+        snake.move(willEat);
+
+        // Nếu ăn mồi thì tăng điểm và sinh food mới
+        if (willEat) {
+            model.getScoreManager().increaseScore();
+            model.getFood().spawn(snake.getBody());
+        }
+
+        // Kiểm tra va chạm sau khi rắn đã di chuyển
         if (collisionManager.checkCollision(snake)) {
             handleGameOver();
             return;
@@ -94,14 +103,60 @@ public class GameController {
         view.render(model);
     }
 
+    private Point getNextHead(Snake snake) {
+        Point head = snake.getBody().get(0);
+        Point nextHead = new Point(head.x, head.y);
+
+        Direction direction = snake.getDirection();
+
+        switch (direction) {
+            case UP -> nextHead.y--;
+            case DOWN -> nextHead.y++;
+            case LEFT -> nextHead.x--;
+            case RIGHT -> nextHead.x++;
+        }
+
+        return nextHead;
+    }
+
     private void handleGameOver() {
         gameLoop.stop();
         model.setCurrentState(GameState.GAME_OVER);
         view.render(model);
     }
 
+    public void pauseGame() {
+        if (model.getCurrentState() == GameState.PLAYING) {
+            model.setCurrentState(GameState.PAUSED);
+            gameLoop.stop();
+            view.render(model);
+            view.requestFocusInWindow();
+        }
+    }
+
+    public void resumeGame() {
+        if (model.getCurrentState() == GameState.PAUSED) {
+            model.setCurrentState(GameState.PLAYING);
+            gameLoop.start();
+            view.render(model);
+            view.requestFocusInWindow();
+        }
+    }
+
+    public void togglePause() {
+        if (model.getCurrentState() == GameState.PLAYING) {
+            pauseGame();
+        } else if (model.getCurrentState() == GameState.PAUSED) {
+            resumeGame();
+        }
+    }
+
     public boolean isGamePlaying() {
         return model.getCurrentState() == GameState.PLAYING;
+    }
+
+    public boolean isGamePaused() {
+        return model.getCurrentState() == GameState.PAUSED;
     }
 
     public InputHandler getInputHandler() {
@@ -109,9 +164,13 @@ public class GameController {
     }
 
     public void backToMenu() {
-        if (model.getCurrentState() == GameState.GAME_OVER) {
-            model.setCurrentState(GameState.MENU); // Chuyển trạng thái về MENU
-            view.render(model); // Vẽ lại màn hình Menu
+        if (model.getCurrentState() == GameState.GAME_OVER
+                || model.getCurrentState() == GameState.PAUSED) {
+
+            gameLoop.stop();
+            model.setCurrentState(GameState.MENU);
+            view.render(model);
+            view.requestFocusInWindow();
         }
     }
 }

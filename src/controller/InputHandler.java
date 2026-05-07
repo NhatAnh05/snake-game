@@ -17,16 +17,25 @@ public class InputHandler extends KeyAdapter {
     public void keyPressed(KeyEvent event) {
         currentKeyCode = event.getKeyCode();
 
+        // ENTER: bắt đầu game hoặc chơi lại sau khi Game Over
         if (currentKeyCode == KeyEvent.VK_ENTER) {
             controller.handleStartOrRestartRequest();
             return;
         }
-        
-        if (currentKeyCode == KeyEvent.VK_ESCAPE) {
-        	controller.backToMenu();
+
+        // P: tạm dừng hoặc tiếp tục game
+        if (currentKeyCode == KeyEvent.VK_P) {
+            controller.togglePause();
             return;
         }
 
+        // ESC: quay về menu nếu đang Pause hoặc Game Over
+        if (currentKeyCode == KeyEvent.VK_ESCAPE) {
+            controller.backToMenu();
+            return;
+        }
+
+        // Điều khiển hướng đi của rắn
         Direction newDirection = mapKeyToDirection(currentKeyCode);
         if (newDirection != null) {
             controller.requestChangeDirection(newDirection);
@@ -44,7 +53,10 @@ public class InputHandler extends KeyAdapter {
     }
 
     public boolean isValidKey(int keyCode) {
-        return mapKeyToDirection(keyCode) != null;
+        return mapKeyToDirection(keyCode) != null
+                || keyCode == KeyEvent.VK_ENTER
+                || keyCode == KeyEvent.VK_ESCAPE
+                || keyCode == KeyEvent.VK_P;
     }
 
     public int getCurrentKeyCode() {

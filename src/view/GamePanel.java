@@ -13,7 +13,6 @@ import model.GameModel;
 import model.GameState;
 import model.Point;
 
-
 public class GamePanel extends JPanel {
     private GameModel currentModel;
     private BufferedImage imgHead, imgBody, imgFood;
@@ -105,10 +104,11 @@ public class GamePanel extends JPanel {
             }
         });
     }
+
     private void startTransition(GameState targetState) {
         nextState = targetState;
         isTransitioning = true;
-        isFadingOut = true; // Bắt đầu mờ dần sang đen
+        isFadingOut = true;
         transitionAlpha = 0;
 
         transitionTimer = new Timer(15, e -> {
@@ -116,18 +116,15 @@ public class GamePanel extends JPanel {
                 transitionAlpha += 20;
                 if (transitionAlpha >= 255) {
                     transitionAlpha = 255;
-                    isFadingOut = false; // Chuyển sang giai đoạn hiện rõ dần lên
+                    isFadingOut = false;
 
-                    // 1. KÍCH HOẠT GAME TRƯỚC (Khi trạng thái vẫn đang là MENU)
                     if (nextState == GameState.PLAYING && onStartAction != null) {
                         onStartAction.run();
                     }
 
-                    // 2. SAU ĐÓ MỚI ĐỔI TRẠNG THÁI GIAO DIỆN
                     currentModel.setCurrentState(nextState);
                 }
             } else {
-                // Giai đoạn hiện rõ dần lên (Fade in)
                 transitionAlpha -= 20;
                 if (transitionAlpha <= 0) {
                     transitionAlpha = 0;
@@ -139,6 +136,7 @@ public class GamePanel extends JPanel {
         });
         transitionTimer.start();
     }
+
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -260,12 +258,21 @@ public class GamePanel extends JPanel {
     private void drawTopBar(Graphics2D g2d, int w) {
         g2d.setFont(new Font("SansSerif", Font.BOLD, 14));
         g2d.setColor(new Color(0, 200, 255));
+
         g2d.drawString("MÀN 1", 30, 30);
-        String score = "ĐIỂM CAO: 145,200";
+
+        int highScore = 0;
+        if (currentModel != null && currentModel.getScoreManager() != null) {
+            highScore = currentModel.getScoreManager().getHighScore();
+        }
+
+        String score = "ĐIỂM CAO: " + highScore;
         FontMetrics fm = g2d.getFontMetrics();
         g2d.drawString(score, (w - fm.stringWidth(score)) / 2, 30);
+
         String coins = "XU: 1,500";
         g2d.drawString(coins, w - fm.stringWidth(coins) - 30, 30);
+
         g2d.setColor(new Color(0, 255, 255, 50));
         g2d.drawLine(0, 45, w, 45);
     }
@@ -275,6 +282,7 @@ public class GamePanel extends JPanel {
         int[] xL = {0, 60, 60, 100, 100, 0};
         int[] yL = {180, 180, 280, 320, h, h};
         g2d.fillPolygon(xL, yL, 6);
+
         int[] xR = {w, w - 60, w - 60, w - 100, w - 100, w};
         int[] yR = {180, 180, 280, 320, h, h};
         g2d.fillPolygon(xR, yR, 6);
@@ -290,7 +298,13 @@ public class GamePanel extends JPanel {
         int startX = (w - (boxW * 3 + gap * 2)) / 2;
         int y = h - 90;
         String[] titles = {"CHẾ ĐỘ CHƠI", "ĐIỂM CAO", "CÀI ĐẶT"};
-        String[] subs = {"CỔ ĐIỂN | SINH TỒN", "BẢNG XẾP HẠNG", "ÂM THANH | GIAO DIỆN"};
+
+        int highScore = 0;
+        if (currentModel != null && currentModel.getScoreManager() != null) {
+            highScore = currentModel.getScoreManager().getHighScore();
+        }
+
+        String[] subs = {"CỔ ĐIỂN | SINH TỒN", String.valueOf(highScore), "ÂM THANH | GIAO DIỆN"};
 
         for (int i = 0; i < 3; i++) {
             int bx = startX + i * (boxW + gap);
@@ -316,6 +330,7 @@ public class GamePanel extends JPanel {
         g2d.setFont(new Font("Arial", Font.BOLD, size));
         FontMetrics fm = g2d.getFontMetrics();
         int tx = cx - fm.stringWidth(text) / 2;
+
         for (int i = 1; i <= 5; i++) {
             g2d.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), 40));
             g2d.drawString(text, tx - i, y);
@@ -323,11 +338,13 @@ public class GamePanel extends JPanel {
             g2d.drawString(text, tx, y - i);
             g2d.drawString(text, tx, y + i);
         }
+
         g2d.setColor(color);
         g2d.drawString(text, tx, y);
         g2d.setColor(new Color(255, 255, 255, 100));
         g2d.drawString(text, tx, y);
     }
+
     private void drawButton(Graphics2D g2d, String text, int x, int y, int w, int h) {
         g2d.setColor(new Color(0, 255, 200, 30));
         g2d.fillRoundRect(x - 6, y - 6, w + 12, h + 12, 25, 25);
@@ -352,11 +369,12 @@ public class GamePanel extends JPanel {
     private void drawGameWorld(Graphics2D g2d) {
         g2d.setColor(new Color(10, 10, 15));
         g2d.fillRect(0, 0, getWidth(), getHeight());
+
         g2d.setColor(new Color(255, 255, 255, 10));
         for (int i = 0; i < getWidth(); i += 20) g2d.drawLine(i, 0, i, getHeight());
         for (int i = 0; i < getHeight(); i += 20) g2d.drawLine(0, i, getWidth(), i);
 
-        if(currentModel.getFood() != null && currentModel.getFood().getPosition() != null) {
+        if (currentModel.getFood() != null && currentModel.getFood().getPosition() != null) {
             Point food = currentModel.getFood().getPosition();
             if (imgFood != null) {
                 g2d.drawImage(imgFood, food.x * 20, food.y * 20, 20, 20, null);
@@ -368,8 +386,10 @@ public class GamePanel extends JPanel {
 
         if (currentModel.getSnake() != null && currentModel.getSnake().getBody() != null) {
             java.util.List<Point> body = currentModel.getSnake().getBody();
+
             for (int i = 0; i < body.size(); i++) {
                 Point p = body.get(i);
+
                 if (i == 0) {
                     g2d.setColor(new Color(0, 255, 150));
                     g2d.fillRoundRect(p.x * 20, p.y * 20, 20, 20, 8, 8);
@@ -380,30 +400,98 @@ public class GamePanel extends JPanel {
             }
         }
 
+        drawScoreBoard(g2d);
+
         if (currentModel.getCurrentState() == GameState.PAUSED) {
-            drawOverlay(g2d, "TẠM DỪNG", Color.ORANGE);
+            drawPauseOverlay(g2d);
         } else if (currentModel.getCurrentState() == GameState.GAME_OVER) {
-            drawOverlay(g2d, "KẾT THÚC", Color.RED);
+            drawGameOverOverlay(g2d);
         }
     }
 
-    private void drawOverlay(Graphics2D g2d, String msg, Color color) {
+    private void drawScoreBoard(Graphics2D g2d) {
+        if (currentModel == null || currentModel.getScoreManager() == null) {
+            return;
+        }
+
+        int currentScore = currentModel.getScoreManager().getCurrentScore();
+        int highScore = currentModel.getScoreManager().getHighScore();
+
+        int boxX = 15;
+        int boxY = 15;
+        int boxW = 210;
+        int boxH = 75;
+
+        g2d.setColor(new Color(0, 0, 0, 150));
+        g2d.fillRoundRect(boxX, boxY, boxW, boxH, 15, 15);
+
+        g2d.setColor(new Color(0, 255, 200, 180));
+        g2d.setStroke(new BasicStroke(2));
+        g2d.drawRoundRect(boxX, boxY, boxW, boxH, 15, 15);
+
+        g2d.setFont(new Font("Consolas", Font.BOLD, 20));
+
+        g2d.setColor(Color.WHITE);
+        g2d.drawString("SCORE: " + currentScore, boxX + 18, boxY + 30);
+
+        g2d.setColor(new Color(255, 220, 80));
+        g2d.drawString("HIGH : " + highScore, boxX + 18, boxY + 58);
+    }
+
+    private void drawPauseOverlay(Graphics2D g2d) {
         g2d.setColor(new Color(0, 0, 0, 180));
         g2d.fillRect(0, 0, getWidth(), getHeight());
-        drawText(g2d, msg, getWidth()/2, getHeight()/2 - 50, 60, color);
+
+        drawText(g2d, "TẠM DỪNG", getWidth() / 2, getHeight() / 2 - 80, 60, Color.ORANGE);
+
+        g2d.setFont(new Font("SansSerif", Font.BOLD, 22));
+        g2d.setColor(Color.WHITE);
+
+        drawCenteredString(g2d, "Nhấn [ P ] để tiếp tục", getWidth() / 2, getHeight() / 2 + 10);
+        drawCenteredString(g2d, "Nhấn [ ESC ] để về Menu chính", getWidth() / 2, getHeight() / 2 + 50);
+    }
+
+    private void drawGameOverOverlay(Graphics2D g2d) {
+        g2d.setColor(new Color(0, 0, 0, 185));
+        g2d.fillRect(0, 0, getWidth(), getHeight());
+
+        drawText(g2d, "KẾT THÚC", getWidth() / 2, getHeight() / 2 - 120, 60, Color.RED);
+
+        int currentScore = 0;
+        int highScore = 0;
+
+        if (currentModel != null && currentModel.getScoreManager() != null) {
+            currentScore = currentModel.getScoreManager().getCurrentScore();
+            highScore = currentModel.getScoreManager().getHighScore();
+        }
+
+        g2d.setFont(new Font("Consolas", Font.BOLD, 24));
+        g2d.setColor(Color.WHITE);
+        drawCenteredString(g2d, "SCORE: " + currentScore, getWidth() / 2, getHeight() / 2 - 35);
+
+        g2d.setColor(new Color(255, 220, 80));
+        drawCenteredString(g2d, "HIGH SCORE: " + highScore, getWidth() / 2, getHeight() / 2);
 
         g2d.setFont(new Font("SansSerif", Font.PLAIN, 20));
         g2d.setColor(Color.WHITE);
-        g2d.drawString("Nhấn [ ENTER ] để chơi lại", getWidth()/2 - 120, getHeight()/2 + 40);
-        g2d.drawString("Nhấn [ ESC ] để về Menu chính", getWidth()/2 - 125, getHeight()/2 + 80);
+        drawCenteredString(g2d, "Nhấn [ ENTER ] để chơi lại", getWidth() / 2, getHeight() / 2 + 60);
+        drawCenteredString(g2d, "Nhấn [ ESC ] để về Menu chính", getWidth() / 2, getHeight() / 2 + 95);
+    }
+
+    private void drawCenteredString(Graphics2D g2d, String text, int centerX, int y) {
+        FontMetrics fm = g2d.getFontMetrics();
+        int x = centerX - fm.stringWidth(text) / 2;
+        g2d.drawString(text, x, y);
     }
 
     private void drawLoading(Graphics2D g2d) {
         g2d.setColor(Color.BLACK);
         g2d.fillRect(0, 0, getWidth(), getHeight());
+
         g2d.setColor(Color.WHITE);
         g2d.setFont(new Font("Consolas", Font.BOLD, 20));
         FontMetrics fm = g2d.getFontMetrics();
+
         String msg = "ĐANG TẢI HỆ THỐNG...";
         g2d.drawString(msg, (getWidth() - fm.stringWidth(msg)) / 2, getHeight() / 2);
     }

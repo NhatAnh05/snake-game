@@ -13,12 +13,14 @@ public class GameUI extends JFrame {
         setResizable(false);
 
         panel = new GamePanel();
-        panel.setPreferredSize(new Dimension(800, 600));
+        panel.setPreferredSize(new Dimension(1140, 600));
 
         add(panel);
 
         pack();
         setLocationRelativeTo(null);
+
+        setFocusable(true);
     }
 
     public void render(GameModel model) {
@@ -28,6 +30,8 @@ public class GameUI extends JFrame {
 
     public void showGameScreen() {
         this.setVisible(true);
+
+        this.requestFocusInWindow();
     }
 
     public GamePanel getGamePanel() {

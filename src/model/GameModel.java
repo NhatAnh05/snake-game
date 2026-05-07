@@ -5,6 +5,7 @@ public class GameModel {
     private Food food;
     private ScoreManager scoreManager;
     private GameState currentState;
+    private GameMode currentMode = GameMode.CLASSIC;
     
     public GameModel() {
         this.snake = new Snake();
@@ -33,5 +34,13 @@ public class GameModel {
 
     public void setCurrentState(GameState targetState) {
         this.currentState = targetState;
+    }
+    
+    public GameMode getCurrentMode() {
+        return currentMode;
+    }
+
+    public void setCurrentMode(GameMode currentMode) {
+        this.currentMode = currentMode;
     }
 }

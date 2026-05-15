@@ -85,14 +85,15 @@ public class GameController {
 		 * ăn mồi.
 		 */
 		Point nextHead = getNextHead(snake);
-		boolean willEat = foodPos != null && nextHead.equals(foodPos);
+        boolean willEat = collisionManager.checkFoodCollision(nextHead, foodPos);
 
 		// Di chuyển rắn
-		snake.move(willEat);
+		snake.move();
 
 		// Nếu ăn mồi thì tăng điểm và sinh food mới
 		if (willEat) {
-			model.getScoreManager().increaseScore();
+            snake.grow();
+			model.getScoreManager().addScore();
 			model.getFood().spawn(snake.getBody());
 		}
 

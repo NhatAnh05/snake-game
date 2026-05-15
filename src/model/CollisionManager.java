@@ -10,7 +10,10 @@ public class CollisionManager {
         this.boardCols = boardCols;
         this.boardRows = boardRows;
     }
-
+    public boolean checkFoodCollision(Point head, Point foodPos) {
+        if (head == null || foodPos == null) return false;
+        return head.equals(foodPos);
+    }
     public boolean checkWallCollision(Point head) {
         if (head == null) return false;
 

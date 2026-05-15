@@ -24,7 +24,7 @@ public class Snake {
         return body;
     }
 
-    public void move(boolean grow) { // Thêm tham số grow
+    public void move() { // Bỏ tham số grow
         if (body.isEmpty() || direction == null) return;
 
         Point head = body.get(0);
@@ -38,11 +38,13 @@ public class Snake {
         }
 
         body.add(0, newHead);
+        body.remove(body.size() - 1);
+    }
 
-        // CHỈ xóa đuôi nếu KHÔNG ăn được mồi (grow == false)
-        if (!grow) {
-            body.remove(body.size() - 1);
-        }
+    public void grow() {
+        if (body.isEmpty()) return;
+        Point tail = body.get(body.size() - 1);
+        body.add(new Point(tail.x, tail.y));
     }
 
     public Direction getDirection() {

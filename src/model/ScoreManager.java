@@ -15,7 +15,7 @@ public class ScoreManager {
     }
 
     // Hàm tăng điểm khi ăn mồi
-    public void increaseScore() {
+    public void addScore() {
         currentScore += 10;
 
         if (currentScore > highScore) {

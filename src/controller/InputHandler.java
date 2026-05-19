@@ -15,31 +15,37 @@ public class InputHandler extends KeyAdapter {
 
     @Override
     public void keyPressed(KeyEvent event) {
+        // UC02-MF-02: Hệ thống tiếp nhận sự kiện bàn phím từ người chơi.
         currentKeyCode = event.getKeyCode();
 
-        // ENTER: bắt đầu game hoặc chơi lại sau khi Game Over
+        // UC02-AF01: Nếu phím không thuộc nhóm điều khiển hợp lệ thì bỏ qua input.
+        if (!isValidKey(currentKeyCode)) {
+            return;
+        }
+
+        // ENTER: bắt đầu game từ Menu hoặc chơi lại sau khi Game Over.
         if (currentKeyCode == KeyEvent.VK_ENTER) {
             controller.handleStartOrRestartRequest();
             return;
         }
 
-        // P: tạm dừng hoặc tiếp tục game
+        // P: tạm dừng hoặc tiếp tục game.
         if (currentKeyCode == KeyEvent.VK_P) {
             controller.togglePause();
             return;
         }
 
-        // ESC: quay về menu nếu đang Pause hoặc Game Over
+        // ESC: quay về Menu khi game đang Pause hoặc Game Over.
         if (currentKeyCode == KeyEvent.VK_ESCAPE) {
             controller.backToMenu();
             return;
         }
 
-        // Điều khiển hướng đi của rắn
+        // UC02-MF-04, UC02-MF-05: Chuyển phím mũi tên/WASD thành hướng di chuyển tương ứng.
         Direction newDirection = mapKeyToDirection(currentKeyCode);
-        if (newDirection != null) {
-            controller.requestChangeDirection(newDirection);
-        }
+
+        // UC02-MF-06 -> UC02-MF-08 được xử lý trong GameController và Snake.
+        controller.requestChangeDirection(newDirection);
     }
 
     public Direction mapKeyToDirection(int keyCode) {

@@ -2,6 +2,7 @@ package controller;
 
 import model.CollisionManager;
 
+import model.DifficultyLevel;
 import model.GameMode;
 import model.Direction;
 import model.GameModel;
@@ -90,11 +91,14 @@ public class GameController {
 		// Di chuyển rắn
 		snake.move();
 
-		// Nếu ăn mồi thì tăng điểm và sinh food mới
+		// Nếu ăn mồi thì tăng điểm, sinh food mới và cập nhật tốc độ theo độ khó.
 		if (willEat) {
             snake.grow();
 			model.getScoreManager().addScore();
 			model.getFood().spawn(snake.getBody());
+
+			// UI-01: Timer phải áp dụng đúng độ khó đã chọn trong Main Menu.
+			gameLoop.setDelay(getDelayByMode());
 		}
 
 		// Kiểm tra va chạm sau khi rắn đã di chuyển
@@ -177,20 +181,21 @@ public class GameController {
 		}
 	}
 
+	// UI-01: Tính tốc độ game dựa trên độ khó Easy / Normal / Hard.
+	// Nếu ở chế độ Survival, tốc độ tiếp tục tăng dần theo điểm số.
 	private int getDelayByMode() {
-	    if (model.getCurrentMode() == GameMode.SURVIVAL) {
+	    DifficultyLevel difficulty = model.getDifficultyLevel();
+	    int baseDelay = difficulty != null ? difficulty.getDelay() : DifficultyLevel.NORMAL.getDelay();
 
+	    if (model.getCurrentMode() == GameMode.SURVIVAL) {
 	        int score = model.getScoreManager() != null
 	                ? model.getScoreManager().getCurrentScore()
 	                : 0;
 
-	        // tăng tốc rõ ràng hơn
-	        int base = 140;
 	        int speedUp = (score / 3) * 8;
-
-	        return Math.max(55, base - speedUp);
+	        return Math.max(45, baseDelay - speedUp);
 	    }
 
-	    return 140;
+	    return baseDelay;
 	}
 }

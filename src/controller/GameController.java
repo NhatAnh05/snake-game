@@ -12,6 +12,7 @@ import model.Snake;
 import view.GameUI;
 
 import javax.swing.Timer;
+import java.util.List;
 
 public class GameController {
 	private final GameModel model;
@@ -97,12 +98,17 @@ public class GameController {
 			model.getScoreManager().addScore();
 			model.getFood().spawn(snake.getBody());
 
+			while (model.getWall().contains(model.getFood().getPosition())) {
+			    model.getFood().spawn(snake.getBody());
+			}
+
 			// UI-01: Timer phải áp dụng đúng độ khó đã chọn trong Main Menu.
 			gameLoop.setDelay(getDelayByMode());
 		}
 
-		// Kiểm tra va chạm sau khi rắn đã di chuyển
-		if (collisionManager.checkCollision(snake)) {
+		List<Point> walls = model.getWall().getWalls();
+
+		if (collisionManager.checkCollision(snake, walls)) {
 			handleGameOver();
 			return;
 		}

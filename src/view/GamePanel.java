@@ -710,6 +710,7 @@ public class GamePanel extends JPanel {
 		g2d.setColor(new Color(0, 255, 200, 90));
 		g2d.setStroke(new BasicStroke(2));
 		g2d.drawLine(GAME_AREA_WIDTH, 0, GAME_AREA_WIDTH, GAME_AREA_HEIGHT);
+		drawWalls(g2d);
 		
 		// FOOD
 		if (currentModel.getFood() != null && currentModel.getFood().getPosition() != null) {
@@ -775,6 +776,7 @@ public class GamePanel extends JPanel {
 	    g2d.setColor(new Color(180, 180, 180));
 	    g2d.setStroke(new BasicStroke(2));
 	    g2d.drawRect(0, 0, GAME_AREA_WIDTH - 1, GAME_AREA_HEIGHT - 1);
+	    drawWalls(g2d);
 
 	    // Food: đỏ đơn giản
 	    if (currentModel.getFood() != null && currentModel.getFood().getPosition() != null) {
@@ -803,6 +805,56 @@ public class GamePanel extends JPanel {
 	                    CELL_SIZE
 	            );
 	        }
+	    }
+	}
+	
+	private void drawWalls(Graphics2D g2d) {
+
+	    if (currentModel == null
+	            || currentModel.getWall() == null
+	            || currentModel.getWall().getWalls() == null) {
+	        return;
+	    }
+
+	    java.util.List<Point> walls = currentModel.getWall().getWalls();
+
+	    for (Point wall : walls) {
+
+	        int x = wall.x * CELL_SIZE;
+	        int y = wall.y * CELL_SIZE;
+
+	        // Glow effect
+	        g2d.setColor(new Color(0, 255, 255, 40));
+	        g2d.fillRoundRect(
+	                x - 2,
+	                y - 2,
+	                CELL_SIZE + 4,
+	                CELL_SIZE + 4,
+	                10,
+	                10
+	        );
+
+	        // Main block
+	        g2d.setColor(new Color(0, 255, 200));
+	        g2d.fillRoundRect(
+	                x,
+	                y,
+	                CELL_SIZE,
+	                CELL_SIZE,
+	                8,
+	                8
+	        );
+
+	        // Border
+	        g2d.setColor(Color.WHITE);
+	        g2d.drawRoundRect(
+	                x,
+	                y,
+	                CELL_SIZE,
+	                CELL_SIZE,
+	                8,
+	                8
+	        );
 	    }
 	}
 
@@ -1077,4 +1129,5 @@ public class GamePanel extends JPanel {
 	    g2d.setColor(Color.WHITE);
 	    g2d.drawString(modeFeedbackText, x + padX, y + 22);
 	}
+	
 }

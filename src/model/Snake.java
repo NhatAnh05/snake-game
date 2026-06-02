@@ -40,7 +40,7 @@ public class Snake {
         body.add(0, newHead);
         body.remove(body.size() - 1);
     }
-
+    // 3.3 Bổ sung thêm một đốt mới vào cuối thân rắn sau khi ăn mồi
     public void grow() {
         if (body.isEmpty()) return;
         Point tail = body.get(body.size() - 1);

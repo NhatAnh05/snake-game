@@ -10,6 +10,7 @@ public class CollisionManager {
         this.boardCols = boardCols;
         this.boardRows = boardRows;
     }
+    // 3.1 Kiểm tra va chạm giữa đầu rắn và vị trí của mồi trên bàn chơi
     public boolean checkFoodCollision(Point head, Point foodPos) {
         if (head == null || foodPos == null) return false;
         return head.equals(foodPos);

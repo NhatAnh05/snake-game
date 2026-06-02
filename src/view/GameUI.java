@@ -22,7 +22,7 @@ public class GameUI extends JFrame {
 
         setFocusable(true);
     }
-
+    // 3.4. Hệ thống thực hiện render vẽ lại rắn trên bàn chơi dựa trên danh sách tọa độ mới.
     public void render(GameModel model) {
         panel.updateModel(model);
         panel.repaint();

@@ -9,11 +9,11 @@ public class Food {
 
     private final Random random = new Random();
     private Point position;
-
+    // 3.5 Sinh vị trí ngẫu nhiên cho mồi mới và
+    // 3.6 kiểm tra tọa độ không trùng với thân rắn
     public void spawn(List<Point> snakeBody) {
         int totalCells = BOARD_COLS * BOARD_ROWS;
 
-        // Nếu rắn đã chiếm hết bàn chơi thì không tạo food nữa
         if (snakeBody != null && snakeBody.size() >= totalCells) {
             position = null;
             return;

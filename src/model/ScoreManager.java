@@ -14,7 +14,7 @@ public class ScoreManager {
         this.highScore = HighScoreRepository.loadHighScore();
     }
 
-    // Hàm tăng điểm khi ăn mồi
+    // 3.2 Tăng điểm tích lũy sau khi rắn ăn mồi
     public void addScore() {
         currentScore += 10;
 

@@ -60,12 +60,12 @@ public class GamePanel extends JPanel {
 	// UI-01: Lưu vị trí đang được chọn để người chơi dùng phím điều hướng trong menu.
 	private int selectedMenuOption = MENU_OPTION_START;
 	private int selectedSettingsOption = SETTINGS_OPTION_SOUND;
-	
+
 	private String modeFeedbackText = null;
 	private long modeFeedbackUntil = 0L;
-	
+
 	private InputHandler inputHandler;
-	
+
 
 	public GamePanel() {
 		setPreferredSize(new Dimension(PANEL_WIDTH, PANEL_HEIGHT));
@@ -121,21 +121,21 @@ public class GamePanel extends JPanel {
 		// --- BỔ SUNG BẢO VỆ: ĐĂNG KÝ THEO KÝ TỰ CHỮ (Dành riêng để đè bẹp Unikey VIE Telex) ---
 		inputMap.put(KeyStroke.getKeyStroke('p'), "ui01-pause");
 		inputMap.put(KeyStroke.getKeyStroke('P'), "ui01-pause");
-		
+
 		inputMap.put(KeyStroke.getKeyStroke('w'), "ui01-up");
 		inputMap.put(KeyStroke.getKeyStroke('W'), "ui01-up");
 		inputMap.put(KeyStroke.getKeyStroke('ư'), "ui01-up"); // Chặn Telex gõ chữ W ra chữ Ư
 		inputMap.put(KeyStroke.getKeyStroke('Ư'), "ui01-up");
-		
+
 		inputMap.put(KeyStroke.getKeyStroke('s'), "ui01-down");
 		inputMap.put(KeyStroke.getKeyStroke('S'), "ui01-down");
-		
+
 		inputMap.put(KeyStroke.getKeyStroke('a'), "ui01-left");
 		inputMap.put(KeyStroke.getKeyStroke('A'), "ui01-left");
-		
+
 		inputMap.put(KeyStroke.getKeyStroke('d'), "ui01-right");
 		inputMap.put(KeyStroke.getKeyStroke('D'), "ui01-right");
-		
+
 		actionMap.put("ui01-left", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -345,7 +345,7 @@ public class GamePanel extends JPanel {
 					int gap = 16;
 					int startX = (w - (boxW * 4 + gap * 3)) / 2;
 					int yBottom = h - 90;
-					
+
 					Rectangle btnMode = new Rectangle(startX, yBottom, boxW, boxH);
 					Rectangle btnDifficulty = new Rectangle(startX + boxW + gap, yBottom, boxW, boxH);
 
@@ -456,6 +456,7 @@ public class GamePanel extends JPanel {
 		case PAUSED:
 		case GAME_OVER:
 			drawGameWorld(g2d);
+            drawSnakeHeadDirection(g2d);
 			break;
 		}
 
@@ -784,7 +785,7 @@ public class GamePanel extends JPanel {
 		g2d.setStroke(new BasicStroke(2));
 		g2d.drawLine(GAME_AREA_WIDTH, 0, GAME_AREA_WIDTH, GAME_AREA_HEIGHT);
 		drawWalls(g2d);
-		
+
 		// FOOD
 		if (currentModel.getFood() != null && currentModel.getFood().getPosition() != null) {
 			Point food = currentModel.getFood().getPosition();
@@ -795,7 +796,7 @@ public class GamePanel extends JPanel {
 				g2d.fillOval(food.x * CELL_SIZE + 2, food.y * CELL_SIZE + 2, 16, 16);
 			}
 		}
-		
+
 		// SNAKE
 		if (currentModel.getSnake() != null && currentModel.getSnake().getBody() != null) {
 			java.util.List<Point> body = currentModel.getSnake().getBody();
@@ -821,8 +822,8 @@ public class GamePanel extends JPanel {
 			}
 		}
 	}
-	
-	
+
+
 	// ================================
 	// THEME CỔ ĐIỂN
 	// ================================
@@ -880,7 +881,7 @@ public class GamePanel extends JPanel {
 	        }
 	    }
 	}
-	
+
 	private void drawWalls(Graphics2D g2d) {
 
 	    if (currentModel == null
@@ -1169,13 +1170,13 @@ public class GamePanel extends JPanel {
 
 		g2d.drawString(msg, (getWidth() - fm.stringWidth(msg)) / 2, getHeight() / 2);
 	}
-	
+
 	private void showModeFeedback(String text) {
 	    modeFeedbackText = text;
 	    modeFeedbackUntil = System.currentTimeMillis() + 1200;
 	    repaint();
 	}
-	
+
 	private void drawModeFeedback(Graphics2D g2d, int w, int h) {
 	    if (modeFeedbackText == null || System.currentTimeMillis() > modeFeedbackUntil) {
 	        return;
@@ -1203,8 +1204,82 @@ public class GamePanel extends JPanel {
 	    g2d.drawString(modeFeedbackText, x + padX, y + 22);
 	}
 
-	public void setInputHandler(InputHandler inputHandler) {
+    public void setInputHandler(InputHandler inputHandler) {
         this.inputHandler = inputHandler;
     }
-	
+
+
+    private void drawSnakeHeadDirection(Graphics2D g2d) {
+        // Chỉ vẽ khi game đang chơi và có dữ liệu rắn
+        if (currentModel == null || currentModel.getCurrentState() != GameState.PLAYING) return;
+        if (currentModel.getSnake() == null || currentModel.getSnake().getBody() == null) return;
+
+        java.util.List<Point> body = currentModel.getSnake().getBody();
+        if (body.isEmpty()) return;
+
+        model.Direction currentDir = currentModel.getSnake().getDirection();
+        if (currentDir == null) return;
+
+        // 1. Lấy tọa độ ô đầu rắn hiện tại (Tính theo pixel)
+        Point head = body.get(0);
+        int headPixelX = head.x * CELL_SIZE;
+        int headPixelY = head.y * CELL_SIZE;
+
+        // 2. Tính toán tâm của ô đầu rắn hiện tại trước
+        int centerX = headPixelX + (CELL_SIZE / 2);
+        int centerY = headPixelY + (CELL_SIZE / 2);
+
+        // 3. DỊCH CHUYỂN TÂM MŨI TÊN RA Ô PHÍA TRƯỚC (Tùy theo hướng đi hiện tại)
+        switch (currentDir) {
+            case UP    -> centerY -= CELL_SIZE; // Đẩy lên ô phía trên
+            case DOWN  -> centerY += CELL_SIZE; // Đẩy xuống ô phía dưới
+            case LEFT  -> centerX -= CELL_SIZE; // Đẩy sang ô bên trái
+            case RIGHT -> centerX += CELL_SIZE; // Đẩy sang ô bên phải
+        }
+
+        // Lưu cấu hình nét vẽ cũ để bảo vệ hệ thống
+        Stroke oldStroke = g2d.getStroke();
+
+        // 4. Cố định màu mũi tên là MÀU ĐỎ theo yêu cầu của bạn
+        Color arrowColor = new Color(255, 7, 58); // Đỏ Neon rực rỡ, dễ nhìn
+
+        // 5. Tạo hình đa giác (Tam giác chỉ hướng) tại vị trí ô mới phía trước
+        Polygon arrow = new Polygon();
+        int size = 5; // Kích thước mũi tên
+
+        switch (currentDir) {
+            case UP -> {
+                arrow.addPoint(centerX, centerY - size - 2);
+                arrow.addPoint(centerX - size, centerY + size - 1);
+                arrow.addPoint(centerX + size, centerY + size - 1);
+            }
+            case DOWN -> {
+                arrow.addPoint(centerX, centerY + size + 2);
+                arrow.addPoint(centerX - size, centerY - size + 1);
+                arrow.addPoint(centerX + size, centerY - size + 1);
+            }
+            case LEFT -> {
+                arrow.addPoint(centerX - size - 2, centerY);
+                arrow.addPoint(centerX + size - 1, centerY - size);
+                arrow.addPoint(centerX + size - 1, centerY + size);
+            }
+            case RIGHT -> {
+                arrow.addPoint(centerX + size + 2, centerY);
+                arrow.addPoint(centerX - size + 1, centerY - size);
+                arrow.addPoint(centerX - size + 1, centerY + size);
+            }
+        }
+
+        // 6. Đổ đặc ruột mũi tên bằng màu đỏ
+        g2d.setColor(arrowColor);
+        g2d.fillPolygon(arrow);
+
+        // 7. Vẽ thêm viền trắng mỏng bao quanh giúp mũi tên sắc nét trên mọi nền map
+        g2d.setColor(Color.WHITE);
+        g2d.setStroke(new BasicStroke(1.0f));
+        g2d.drawPolygon(arrow);
+
+        // Khôi phục lại nét vẽ cũ cho Graphics
+        g2d.setStroke(oldStroke);
+    }
 }

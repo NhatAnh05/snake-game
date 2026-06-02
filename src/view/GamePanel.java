@@ -1,6 +1,9 @@
 package view;
 
 import javax.swing.*;
+
+import controller.InputHandler;
+
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.*;
@@ -60,6 +63,9 @@ public class GamePanel extends JPanel {
 	
 	private String modeFeedbackText = null;
 	private long modeFeedbackUntil = 0L;
+	
+	private InputHandler inputHandler;
+	
 
 	public GamePanel() {
 		setPreferredSize(new Dimension(PANEL_WIDTH, PANEL_HEIGHT));
@@ -93,57 +99,124 @@ public class GamePanel extends JPanel {
 
 	// UI-01: Thiết lập điều hướng menu bằng bàn phím cho phần giao diện.
 	// Chỉ xử lý khi game đang ở MENU hoặc SETTINGS để không ảnh hưởng gameplay.
+	// =========================================================================
+	// [UC05] - NHẬT ANH
+	// PHẦN CHỈNH SỬA ĐỂ SỬA LỖI BÀN PHÍM VIE:
+	// Ra lệnh cho Java vô hiệu hóa bộ gõ tiếng Việt hệ thống (IME) trên cửa sổ game.
+	// Giúp ngăn chặn việc hệ điều hành tự ý chặn phím và sinh ra mã 229 (VK_PROCESSKEY).
+	// =========================================================================
 	private void setupKeyboardActions() {
 		InputMap inputMap = getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
 		ActionMap actionMap = getActionMap();
 
+		// Đăng ký các phím điều khiển hệ thống bằng mũi tên và Enter
 		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, 0), "ui01-left");
 		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0), "ui01-up");
 		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, 0), "ui01-right");
 		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, 0), "ui01-down");
 		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "ui01-confirm");
 		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "ui01-escape");
+		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_P, 0), "ui01-pause");
 
+		// --- BỔ SUNG BẢO VỆ: ĐĂNG KÝ THEO KÝ TỰ CHỮ (Dành riêng để đè bẹp Unikey VIE Telex) ---
+		inputMap.put(KeyStroke.getKeyStroke('p'), "ui01-pause");
+		inputMap.put(KeyStroke.getKeyStroke('P'), "ui01-pause");
+		
+		inputMap.put(KeyStroke.getKeyStroke('w'), "ui01-up");
+		inputMap.put(KeyStroke.getKeyStroke('W'), "ui01-up");
+		inputMap.put(KeyStroke.getKeyStroke('ư'), "ui01-up"); // Chặn Telex gõ chữ W ra chữ Ư
+		inputMap.put(KeyStroke.getKeyStroke('Ư'), "ui01-up");
+		
+		inputMap.put(KeyStroke.getKeyStroke('s'), "ui01-down");
+		inputMap.put(KeyStroke.getKeyStroke('S'), "ui01-down");
+		
+		inputMap.put(KeyStroke.getKeyStroke('a'), "ui01-left");
+		inputMap.put(KeyStroke.getKeyStroke('A'), "ui01-left");
+		
+		inputMap.put(KeyStroke.getKeyStroke('d'), "ui01-right");
+		inputMap.put(KeyStroke.getKeyStroke('D'), "ui01-right");
+		
 		actionMap.put("ui01-left", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				handleUiNavigation(-1);
+				System.out.println("[KeyBindings] -> Bắt trúng phím TRÁI / A");
+				if (currentModel != null && (currentModel.getCurrentState() == GameState.MENU || currentModel.getCurrentState() == GameState.SETTINGS)) {
+					handleUiNavigation(-1);
+				} else if (inputHandler != null) {
+					inputHandler.keyPressed(new KeyEvent(GamePanel.this, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_LEFT, KeyEvent.CHAR_UNDEFINED));
+				}
 			}
 		});
 
 		actionMap.put("ui01-up", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				handleUiNavigation(-1);
+				System.out.println("[KeyBindings] -> Bắt trúng phím LÊN / W");
+				if (currentModel != null && (currentModel.getCurrentState() == GameState.MENU || currentModel.getCurrentState() == GameState.SETTINGS)) {
+					handleUiNavigation(-1);
+				} else if (inputHandler != null) {
+					inputHandler.keyPressed(new KeyEvent(GamePanel.this, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_UP, KeyEvent.CHAR_UNDEFINED));
+				}
 			}
 		});
 
 		actionMap.put("ui01-right", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				handleUiNavigation(1);
+				System.out.println("[KeyBindings] -> Bắt trúng phím PHẢI / D");
+				if (currentModel != null && (currentModel.getCurrentState() == GameState.MENU || currentModel.getCurrentState() == GameState.SETTINGS)) {
+					handleUiNavigation(1);
+				} else if (inputHandler != null) {
+					inputHandler.keyPressed(new KeyEvent(GamePanel.this, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_RIGHT, KeyEvent.CHAR_UNDEFINED));
+				}
 			}
 		});
 
 		actionMap.put("ui01-down", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				handleUiNavigation(1);
+				System.out.println("[KeyBindings] -> Bắt trúng phím XUỐNG / S");
+				if (currentModel != null && (currentModel.getCurrentState() == GameState.MENU || currentModel.getCurrentState() == GameState.SETTINGS)) {
+					handleUiNavigation(1);
+				} else if (inputHandler != null) {
+					inputHandler.keyPressed(new KeyEvent(GamePanel.this, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_DOWN, KeyEvent.CHAR_UNDEFINED));
+				}
 			}
 		});
 
 		actionMap.put("ui01-confirm", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				handleUiConfirm();
+				System.out.println("[KeyBindings] -> Bắt trúng phím ENTER");
+				if (currentModel != null && (currentModel.getCurrentState() == GameState.MENU || currentModel.getCurrentState() == GameState.SETTINGS)) {
+					handleUiConfirm();
+				} else if (inputHandler != null) {
+					inputHandler.keyPressed(new KeyEvent(GamePanel.this, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_ENTER, KeyEvent.CHAR_UNDEFINED));
+				}
 			}
 		});
 
 		actionMap.put("ui01-escape", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				if (currentModel != null && currentModel.getCurrentState() == GameState.SETTINGS) {
-					startTransition(GameState.MENU);
+				System.out.println("[KeyBindings] -> Bắt trúng phím ESC");
+				if (currentModel != null) {
+					if (currentModel.getCurrentState() == GameState.SETTINGS) {
+						startTransition(GameState.MENU);
+					} else if (inputHandler != null) {
+						inputHandler.keyPressed(new KeyEvent(GamePanel.this, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_ESCAPE, KeyEvent.CHAR_UNDEFINED));
+					}
+				}
+			}
+		});
+
+		// 🌟 BỔ SUNG: Xử lý hành động ép chuyển tiếp phím P sang InputHandler bất chấp việc mất Focus
+		actionMap.put("ui01-pause", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				System.out.println("[KeyBindings] -> Bắt trúng phím P từ luồng bảo vệ.");
+				if (inputHandler != null) {
+					inputHandler.keyPressed(new KeyEvent(GamePanel.this, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_P, 'P'));
 				}
 			}
 		});
@@ -1129,5 +1202,9 @@ public class GamePanel extends JPanel {
 	    g2d.setColor(Color.WHITE);
 	    g2d.drawString(modeFeedbackText, x + padX, y + 22);
 	}
+
+	public void setInputHandler(InputHandler inputHandler) {
+        this.inputHandler = inputHandler;
+    }
 	
 }

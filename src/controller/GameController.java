@@ -20,6 +20,7 @@ public class GameController {
 	private final Timer gameLoop;
 	private final InputHandler inputHandler;
 	private final CollisionManager collisionManager;
+	private long lastPauseTime = 0;
 
 	public GameController(GameModel model, GameUI view) {
 		this.model = model;
@@ -29,8 +30,22 @@ public class GameController {
 		this.collisionManager = new CollisionManager(40, 30);
 
 		this.gameLoop = new Timer(getDelayByMode(), event -> updateGame());
+		
+		// =========================================================================
+		// [UC05] - NHẬT ANH
+		// PHẦN CHỈNH SỬA ĐỂ SỬA LỖI BÀN PHÍM VIE:
+		// Ra lệnh cho Java vô hiệu hóa bộ gõ tiếng Việt hệ thống (IME) trên cửa sổ game.
+		// Giúp ngăn chặn việc hệ điều hành tự ý chặn phím và sinh ra mã 229 (VK_PROCESSKEY).
+		// =========================================================================
+		this.view.enableInputMethods(false);
+		this.view.getGamePanel().enableInputMethods(false);
 
+		// Gắn bộ lắng nghe phím cho cả Frame chính và Panel để tránh mất tiêu điểm (Focus)
 		this.view.addKeyListener(inputHandler);
+		this.view.getGamePanel().addKeyListener(inputHandler); 
+		
+		// Đồng bộ bộ xử lý phím vào GamePanel để giải quyết triệt để vấn đề Key Bindings chặn phím
+		this.view.getGamePanel().setInputHandler(inputHandler); 
 
 		this.view.getGamePanel().setOnStartAction(() -> {
 			handleStartOrRestartRequest();
@@ -45,13 +60,16 @@ public class GameController {
 
 	public void handleStartOrRestartRequest() {
 		if (model.getCurrentState() == GameState.MENU || model.getCurrentState() == GameState.GAME_OVER) {
-
 			model.prepareNewGame();
 			gameLoop.setDelay(getDelayByMode()); 
 			gameLoop.start();
 
 			view.render(model);
+			
+			// 🌟 ÉP FOCUS CỰC MẠNH: Buộc cả Frame và Panel phải tập trung đón bàn phím ngay khi vào trận
 			view.requestFocusInWindow();
+			view.getGamePanel().setFocusable(true);
+			view.getGamePanel().requestFocusInWindow();
 		}
 	}
 
@@ -158,6 +176,13 @@ public class GameController {
 	}
 
 	public void togglePause() {
+		long currentTime = System.currentTimeMillis();
+		// 🌟 CHẶN ĐỨNG: Nếu 2 lần kích hoạt cách nhau dưới 200 mili-giây thì bỏ qua lần 2
+		if (currentTime - lastPauseTime < 200) {
+			return;
+		}
+		lastPauseTime = currentTime;
+
 		if (model.getCurrentState() == GameState.PLAYING) {
 			pauseGame();
 		} else if (model.getCurrentState() == GameState.PAUSED) {

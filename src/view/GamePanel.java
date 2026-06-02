@@ -1209,8 +1209,8 @@ public class GamePanel extends JPanel {
     }
 
 
+
     private void drawSnakeHeadDirection(Graphics2D g2d) {
-        // Chỉ vẽ khi game đang chơi và có dữ liệu rắn
         if (currentModel == null || currentModel.getCurrentState() != GameState.PLAYING) return;
         if (currentModel.getSnake() == null || currentModel.getSnake().getBody() == null) return;
 
@@ -1220,66 +1220,77 @@ public class GamePanel extends JPanel {
         model.Direction currentDir = currentModel.getSnake().getDirection();
         if (currentDir == null) return;
 
-        // 1. Lấy tọa độ ô đầu rắn hiện tại (Tính theo pixel)
         Point head = body.get(0);
         int headPixelX = head.x * CELL_SIZE;
         int headPixelY = head.y * CELL_SIZE;
 
-        // 2. Tính toán tâm của ô đầu rắn hiện tại trước
         int centerX = headPixelX + (CELL_SIZE / 2);
         int centerY = headPixelY + (CELL_SIZE / 2);
 
-        // 3. DỊCH CHUYỂN TÂM MŨI TÊN RA Ô PHÍA TRƯỚC (Tùy theo hướng đi hiện tại)
         switch (currentDir) {
-            case UP    -> centerY -= CELL_SIZE; // Đẩy lên ô phía trên
-            case DOWN  -> centerY += CELL_SIZE; // Đẩy xuống ô phía dưới
-            case LEFT  -> centerX -= CELL_SIZE; // Đẩy sang ô bên trái
-            case RIGHT -> centerX += CELL_SIZE; // Đẩy sang ô bên phải
+            case UP    -> centerY -= CELL_SIZE;
+            case DOWN  -> centerY += CELL_SIZE;
+            case LEFT  -> centerX -= CELL_SIZE;
+            case RIGHT -> centerX += CELL_SIZE;
         }
 
-        // Lưu cấu hình nét vẽ cũ để bảo vệ hệ thống
         Stroke oldStroke = g2d.getStroke();
 
-        // 4. Cố định màu mũi tên là MÀU ĐỎ theo yêu cầu của bạn
-        Color arrowColor = new Color(255, 7, 58); // Đỏ Neon rực rỡ, dễ nhìn
+        Color arrowColor = new Color(255, 15, 60);
 
-        // 5. Tạo hình đa giác (Tam giác chỉ hướng) tại vị trí ô mới phía trước
+        int headLength = 6;
+        int headWidth = 6;
+        int stemLength = 6;
+        int stemWidth = 2;
+
         Polygon arrow = new Polygon();
-        int size = 5; // Kích thước mũi tên
-
         switch (currentDir) {
             case UP -> {
-                arrow.addPoint(centerX, centerY - size - 2);
-                arrow.addPoint(centerX - size, centerY + size - 1);
-                arrow.addPoint(centerX + size, centerY + size - 1);
+
+                arrow.addPoint(centerX, centerY - headLength);
+                arrow.addPoint(centerX + headWidth, centerY);
+                arrow.addPoint(centerX + stemWidth, centerY);
+                arrow.addPoint(centerX + stemWidth, centerY + stemLength);
+                arrow.addPoint(centerX - stemWidth, centerY + stemLength);
+                arrow.addPoint(centerX - stemWidth, centerY);
+                arrow.addPoint(centerX - headWidth, centerY);
             }
             case DOWN -> {
-                arrow.addPoint(centerX, centerY + size + 2);
-                arrow.addPoint(centerX - size, centerY - size + 1);
-                arrow.addPoint(centerX + size, centerY - size + 1);
+                arrow.addPoint(centerX, centerY + headLength); // Đỉnh nhọn xuống dưới
+                arrow.addPoint(centerX + headWidth, centerY);
+                arrow.addPoint(centerX + stemWidth, centerY);
+                arrow.addPoint(centerX + stemWidth, centerY - stemLength);
+                arrow.addPoint(centerX - stemWidth, centerY - stemLength);
+                arrow.addPoint(centerX - stemWidth, centerY);
+                arrow.addPoint(centerX - headWidth, centerY);
             }
             case LEFT -> {
-                arrow.addPoint(centerX - size - 2, centerY);
-                arrow.addPoint(centerX + size - 1, centerY - size);
-                arrow.addPoint(centerX + size - 1, centerY + size);
+                arrow.addPoint(centerX - headLength, centerY);
+                arrow.addPoint(centerX, centerY - headWidth);
+                arrow.addPoint(centerX, centerY - stemWidth);
+                arrow.addPoint(centerX + stemLength, centerY - stemWidth);
+                arrow.addPoint(centerX + stemLength, centerY + stemWidth);
+                arrow.addPoint(centerX, centerY + stemWidth);
+                arrow.addPoint(centerX, centerY + headWidth);
             }
             case RIGHT -> {
-                arrow.addPoint(centerX + size + 2, centerY);
-                arrow.addPoint(centerX - size + 1, centerY - size);
-                arrow.addPoint(centerX - size + 1, centerY + size);
+                arrow.addPoint(centerX + headLength, centerY);
+                arrow.addPoint(centerX, centerY - headWidth);
+                arrow.addPoint(centerX, centerY - stemWidth);
+                arrow.addPoint(centerX - stemLength, centerY - stemWidth);
+                arrow.addPoint(centerX - stemLength, centerY + stemWidth);
+                arrow.addPoint(centerX, centerY + stemWidth);
+                arrow.addPoint(centerX, centerY + headWidth);
             }
         }
 
-        // 6. Đổ đặc ruột mũi tên bằng màu đỏ
         g2d.setColor(arrowColor);
         g2d.fillPolygon(arrow);
 
-        // 7. Vẽ thêm viền trắng mỏng bao quanh giúp mũi tên sắc nét trên mọi nền map
-        g2d.setColor(Color.WHITE);
-        g2d.setStroke(new BasicStroke(1.0f));
+        g2d.setColor(new Color(255, 255, 255, 220));
+        g2d.setStroke(new BasicStroke(1.2f));
         g2d.drawPolygon(arrow);
 
-        // Khôi phục lại nét vẽ cũ cho Graphics
         g2d.setStroke(oldStroke);
     }
 }

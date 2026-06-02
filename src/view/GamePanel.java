@@ -1,6 +1,9 @@
 package view;
 
 import javax.swing.*;
+
+import controller.InputHandler;
+
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.*;
@@ -9,6 +12,8 @@ import java.io.File;
 import java.io.IOException;
 import javax.imageio.ImageIO;
 
+import model.DifficultyLevel;
+import model.GameMode;
 import model.GameModel;
 import model.GameState;
 import model.Point;
@@ -25,6 +30,19 @@ public class GamePanel extends JPanel {
 	private static final int PANEL_WIDTH = GAME_AREA_WIDTH + SIDEBAR_WIDTH; // 1140
 	private static final int PANEL_HEIGHT = GAME_AREA_HEIGHT; // 600
 
+	// UI-01: Các lựa chọn trên Main Menu để hỗ trợ điều hướng bằng bàn phím.
+	private static final int MENU_OPTION_START = 0;
+	private static final int MENU_OPTION_MODE = 1;
+	private static final int MENU_OPTION_DIFFICULTY = 2;
+	private static final int MENU_OPTION_SETTINGS = 3;
+	private static final int MENU_OPTION_COUNT = 4;
+
+	// UI-01: Các lựa chọn trong màn hình Settings.
+	private static final int SETTINGS_OPTION_SOUND = 0;
+	private static final int SETTINGS_OPTION_THEME = 1;
+	private static final int SETTINGS_OPTION_BACK = 2;
+	private static final int SETTINGS_OPTION_COUNT = 3;
+
 	private GameModel currentModel;
 	private BufferedImage imgHead, imgBody, imgFood;
 
@@ -38,9 +56,16 @@ public class GamePanel extends JPanel {
 	private GameState nextState = null;
 
 	private Runnable onStartAction;
+
+	// UI-01: Lưu vị trí đang được chọn để người chơi dùng phím điều hướng trong menu.
+	private int selectedMenuOption = MENU_OPTION_START;
+	private int selectedSettingsOption = SETTINGS_OPTION_SOUND;
 	
 	private String modeFeedbackText = null;
 	private long modeFeedbackUntil = 0L;
+	
+	private InputHandler inputHandler;
+	
 
 	public GamePanel() {
 		setPreferredSize(new Dimension(PANEL_WIDTH, PANEL_HEIGHT));
@@ -51,6 +76,7 @@ public class GamePanel extends JPanel {
 
 	    loadSprites();
 	    setupMouseListener();
+	    setupKeyboardActions();
 	}
 
 	public void updateModel(GameModel model) {
@@ -71,6 +97,229 @@ public class GamePanel extends JPanel {
 		}
 	}
 
+	// UI-01: Thiết lập điều hướng menu bằng bàn phím cho phần giao diện.
+	// Chỉ xử lý khi game đang ở MENU hoặc SETTINGS để không ảnh hưởng gameplay.
+	// =========================================================================
+	// [UC05] - NHẬT ANH
+	// PHẦN CHỈNH SỬA ĐỂ SỬA LỖI BÀN PHÍM VIE:
+	// Ra lệnh cho Java vô hiệu hóa bộ gõ tiếng Việt hệ thống (IME) trên cửa sổ game.
+	// Giúp ngăn chặn việc hệ điều hành tự ý chặn phím và sinh ra mã 229 (VK_PROCESSKEY).
+	// =========================================================================
+	private void setupKeyboardActions() {
+		InputMap inputMap = getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+		ActionMap actionMap = getActionMap();
+
+		// Đăng ký các phím điều khiển hệ thống bằng mũi tên và Enter
+		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, 0), "ui01-left");
+		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0), "ui01-up");
+		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, 0), "ui01-right");
+		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, 0), "ui01-down");
+		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "ui01-confirm");
+		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "ui01-escape");
+		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_P, 0), "ui01-pause");
+
+		// --- BỔ SUNG BẢO VỆ: ĐĂNG KÝ THEO KÝ TỰ CHỮ (Dành riêng để đè bẹp Unikey VIE Telex) ---
+		inputMap.put(KeyStroke.getKeyStroke('p'), "ui01-pause");
+		inputMap.put(KeyStroke.getKeyStroke('P'), "ui01-pause");
+		
+		inputMap.put(KeyStroke.getKeyStroke('w'), "ui01-up");
+		inputMap.put(KeyStroke.getKeyStroke('W'), "ui01-up");
+		inputMap.put(KeyStroke.getKeyStroke('ư'), "ui01-up"); // Chặn Telex gõ chữ W ra chữ Ư
+		inputMap.put(KeyStroke.getKeyStroke('Ư'), "ui01-up");
+		
+		inputMap.put(KeyStroke.getKeyStroke('s'), "ui01-down");
+		inputMap.put(KeyStroke.getKeyStroke('S'), "ui01-down");
+		
+		inputMap.put(KeyStroke.getKeyStroke('a'), "ui01-left");
+		inputMap.put(KeyStroke.getKeyStroke('A'), "ui01-left");
+		
+		inputMap.put(KeyStroke.getKeyStroke('d'), "ui01-right");
+		inputMap.put(KeyStroke.getKeyStroke('D'), "ui01-right");
+		
+		actionMap.put("ui01-left", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				System.out.println("[KeyBindings] -> Bắt trúng phím TRÁI / A");
+				if (currentModel != null && (currentModel.getCurrentState() == GameState.MENU || currentModel.getCurrentState() == GameState.SETTINGS)) {
+					handleUiNavigation(-1);
+				} else if (inputHandler != null) {
+					inputHandler.keyPressed(new KeyEvent(GamePanel.this, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_LEFT, KeyEvent.CHAR_UNDEFINED));
+				}
+			}
+		});
+
+		actionMap.put("ui01-up", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				System.out.println("[KeyBindings] -> Bắt trúng phím LÊN / W");
+				if (currentModel != null && (currentModel.getCurrentState() == GameState.MENU || currentModel.getCurrentState() == GameState.SETTINGS)) {
+					handleUiNavigation(-1);
+				} else if (inputHandler != null) {
+					inputHandler.keyPressed(new KeyEvent(GamePanel.this, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_UP, KeyEvent.CHAR_UNDEFINED));
+				}
+			}
+		});
+
+		actionMap.put("ui01-right", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				System.out.println("[KeyBindings] -> Bắt trúng phím PHẢI / D");
+				if (currentModel != null && (currentModel.getCurrentState() == GameState.MENU || currentModel.getCurrentState() == GameState.SETTINGS)) {
+					handleUiNavigation(1);
+				} else if (inputHandler != null) {
+					inputHandler.keyPressed(new KeyEvent(GamePanel.this, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_RIGHT, KeyEvent.CHAR_UNDEFINED));
+				}
+			}
+		});
+
+		actionMap.put("ui01-down", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				System.out.println("[KeyBindings] -> Bắt trúng phím XUỐNG / S");
+				if (currentModel != null && (currentModel.getCurrentState() == GameState.MENU || currentModel.getCurrentState() == GameState.SETTINGS)) {
+					handleUiNavigation(1);
+				} else if (inputHandler != null) {
+					inputHandler.keyPressed(new KeyEvent(GamePanel.this, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_DOWN, KeyEvent.CHAR_UNDEFINED));
+				}
+			}
+		});
+
+		actionMap.put("ui01-confirm", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				System.out.println("[KeyBindings] -> Bắt trúng phím ENTER");
+				if (currentModel != null && (currentModel.getCurrentState() == GameState.MENU || currentModel.getCurrentState() == GameState.SETTINGS)) {
+					handleUiConfirm();
+				} else if (inputHandler != null) {
+					inputHandler.keyPressed(new KeyEvent(GamePanel.this, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_ENTER, KeyEvent.CHAR_UNDEFINED));
+				}
+			}
+		});
+
+		actionMap.put("ui01-escape", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				System.out.println("[KeyBindings] -> Bắt trúng phím ESC");
+				if (currentModel != null) {
+					if (currentModel.getCurrentState() == GameState.SETTINGS) {
+						startTransition(GameState.MENU);
+					} else if (inputHandler != null) {
+						inputHandler.keyPressed(new KeyEvent(GamePanel.this, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_ESCAPE, KeyEvent.CHAR_UNDEFINED));
+					}
+				}
+			}
+		});
+
+		// 🌟 BỔ SUNG: Xử lý hành động ép chuyển tiếp phím P sang InputHandler bất chấp việc mất Focus
+		actionMap.put("ui01-pause", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				System.out.println("[KeyBindings] -> Bắt trúng phím P từ luồng bảo vệ.");
+				if (inputHandler != null) {
+					inputHandler.keyPressed(new KeyEvent(GamePanel.this, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_P, 'P'));
+				}
+			}
+		});
+	}
+
+	// UI-01: Di chuyển vùng chọn trên Main Menu hoặc Settings.
+	private void handleUiNavigation(int step) {
+		if (currentModel == null || isTransitioning) {
+			return;
+		}
+
+		if (currentModel.getCurrentState() == GameState.MENU) {
+			selectedMenuOption = wrapSelection(selectedMenuOption + step, MENU_OPTION_COUNT);
+			repaint();
+		} else if (currentModel.getCurrentState() == GameState.SETTINGS) {
+			selectedSettingsOption = wrapSelection(selectedSettingsOption + step, SETTINGS_OPTION_COUNT);
+			repaint();
+		}
+	}
+
+	// UI-01: Xác nhận lựa chọn bằng phím ENTER.
+	private void handleUiConfirm() {
+		if (currentModel == null || isTransitioning) {
+			return;
+		}
+
+		if (currentModel.getCurrentState() == GameState.MENU) {
+			activateMenuOption(selectedMenuOption);
+		} else if (currentModel.getCurrentState() == GameState.SETTINGS) {
+			activateSettingsOption(selectedSettingsOption);
+		}
+	}
+
+	private int wrapSelection(int value, int count) {
+		return (value % count + count) % count;
+	}
+
+	// UI-01: Thực thi lựa chọn trên Main Menu.
+	private void activateMenuOption(int option) {
+		switch (option) {
+		case MENU_OPTION_START -> startTransition(GameState.PLAYING);
+		case MENU_OPTION_MODE -> toggleGameMode();
+		case MENU_OPTION_DIFFICULTY -> toggleDifficultyLevel();
+		case MENU_OPTION_SETTINGS -> startTransition(GameState.SETTINGS);
+		default -> {
+		}
+		}
+	}
+
+	// UI-01: Thực thi lựa chọn trong Settings.
+	private void activateSettingsOption(int option) {
+		switch (option) {
+		case SETTINGS_OPTION_SOUND -> isSoundOn = !isSoundOn;
+		case SETTINGS_OPTION_THEME -> isNeonTheme = !isNeonTheme;
+		case SETTINGS_OPTION_BACK -> startTransition(GameState.MENU);
+		default -> {
+		}
+		}
+
+		repaint();
+	}
+
+	// UI-01: Chuyển chế độ chơi đang hiển thị trong Main Menu.
+	private void toggleGameMode() {
+		if (currentModel.getCurrentMode() == GameMode.CLASSIC) {
+			currentModel.setCurrentMode(GameMode.SURVIVAL);
+			showModeFeedback("Đã chọn chế độ: SURVIVAL");
+		} else {
+			currentModel.setCurrentMode(GameMode.CLASSIC);
+			showModeFeedback("Đã chọn chế độ: CLASSIC");
+		}
+
+		if (isSoundOn) {
+			Toolkit.getDefaultToolkit().beep();
+		}
+
+		repaint();
+	}
+
+	// UI-01: Chuyển độ khó theo vòng lặp EASY -> NORMAL -> HARD -> EASY.
+	private void toggleDifficultyLevel() {
+		DifficultyLevel currentDifficulty = currentModel.getDifficultyLevel();
+		DifficultyLevel nextDifficulty;
+
+		if (currentDifficulty == DifficultyLevel.EASY) {
+			nextDifficulty = DifficultyLevel.NORMAL;
+		} else if (currentDifficulty == DifficultyLevel.NORMAL) {
+			nextDifficulty = DifficultyLevel.HARD;
+		} else {
+			nextDifficulty = DifficultyLevel.EASY;
+		}
+
+		currentModel.setDifficultyLevel(nextDifficulty);
+		showModeFeedback("Đã chọn độ khó: " + nextDifficulty.getLabel());
+
+		if (isSoundOn) {
+			Toolkit.getDefaultToolkit().beep();
+		}
+
+		repaint();
+	}
+
+	// UI-01: Lắng nghe click chuột trên Main Menu và Settings.
 	private void setupMouseListener() {
 		addMouseListener(new MouseAdapter() {
 			@Override
@@ -91,32 +340,30 @@ public class GamePanel extends JPanel {
 				if (currentModel.getCurrentState() == GameState.MENU) {
 					Rectangle btnStart = new Rectangle(w / 2 - 140, 340, 280, 65);
 
-					int boxW = 200;
+					int boxW = 165;
 					int boxH = 55;
-					int gap = 20;
-					int startX = (w - (boxW * 3 + gap * 2)) / 2;
+					int gap = 16;
+					int startX = (w - (boxW * 4 + gap * 3)) / 2;
 					int yBottom = h - 90;
 					
 					Rectangle btnMode = new Rectangle(startX, yBottom, boxW, boxH);
+					Rectangle btnDifficulty = new Rectangle(startX + boxW + gap, yBottom, boxW, boxH);
 
-					int settingsX = startX + 2 * (boxW + gap);
+					int settingsX = startX + 3 * (boxW + gap);
 					Rectangle btnSettings = new Rectangle(settingsX, yBottom, boxW, boxH);
 
 					if (btnMode.contains(mx, my)) {
-					    if (currentModel.getCurrentMode() == model.GameMode.CLASSIC) {
-					        currentModel.setCurrentMode(model.GameMode.SURVIVAL);
-					        showModeFeedback("Đã chọn: SURVIVAL");
-					    } else {
-					        currentModel.setCurrentMode(model.GameMode.CLASSIC);
-					        showModeFeedback("Đã chọn: CLASSIC");
-					    }
-
-					    Toolkit.getDefaultToolkit().beep();
-					    repaint();
+						selectedMenuOption = MENU_OPTION_MODE;
+						activateMenuOption(MENU_OPTION_MODE);
+					} else if (btnDifficulty.contains(mx, my)) {
+						selectedMenuOption = MENU_OPTION_DIFFICULTY;
+						activateMenuOption(MENU_OPTION_DIFFICULTY);
 					} else if (btnStart.contains(mx, my)) {
-					    startTransition(GameState.PLAYING);
+						selectedMenuOption = MENU_OPTION_START;
+						activateMenuOption(MENU_OPTION_START);
 					} else if (btnSettings.contains(mx, my)) {
-					    startTransition(GameState.SETTINGS);
+						selectedMenuOption = MENU_OPTION_SETTINGS;
+						activateMenuOption(MENU_OPTION_SETTINGS);
 					}
 				}
 
@@ -133,19 +380,21 @@ public class GamePanel extends JPanel {
 					Rectangle btnTheme = new Rectangle(panelX + 240, panelY + 125, 110, 35);
 
 					if (btnBack.contains(mx, my)) {
-						startTransition(GameState.MENU);
+						selectedSettingsOption = SETTINGS_OPTION_BACK;
+						activateSettingsOption(SETTINGS_OPTION_BACK);
 					} else if (btnSound.contains(mx, my)) {
-						isSoundOn = !isSoundOn;
-						repaint();
+						selectedSettingsOption = SETTINGS_OPTION_SOUND;
+						activateSettingsOption(SETTINGS_OPTION_SOUND);
 					} else if (btnTheme.contains(mx, my)) {
-						isNeonTheme = !isNeonTheme;
-						repaint();
+						selectedSettingsOption = SETTINGS_OPTION_THEME;
+						activateSettingsOption(SETTINGS_OPTION_THEME);
 					}
 				}
 			}
 		});
 	}
 
+	// UI-01: Chuyển trạng thái màn hình có hiệu ứng fade.
 	private void startTransition(GameState targetState) {
 		nextState = targetState;
 		isTransitioning = true;
@@ -216,6 +465,7 @@ public class GamePanel extends JPanel {
 		}
 	}
 
+	// UI-01: Vẽ Main Menu gồm Start, chọn chế độ chơi và Settings.
 	private void drawMenu(Graphics2D g2d) {
 		int w = getWidth();
 		int h = getHeight();
@@ -224,6 +474,7 @@ public class GamePanel extends JPanel {
 		drawArcadeSilhouettes(g2d, w, h);
 		drawTitleSection(g2d, w / 2, 230);
 		drawButton(g2d, "BẮT ĐẦU", w / 2 - 140, 340, 280, 65);
+		drawSelectionOutline(g2d, w / 2 - 140, 340, 280, 65, selectedMenuOption == MENU_OPTION_START);
 
 		g2d.setFont(new Font("Consolas", Font.BOLD, 15));
 		g2d.setColor(new Color(100, 200, 255, 180));
@@ -240,6 +491,7 @@ public class GamePanel extends JPanel {
 	// =====================================================
 	// SETTINGS
 	// =====================================================
+	// UI-01: Vẽ màn hình Settings gồm âm thanh, giao diện và nút quay lại.
 	private void drawSettings(Graphics2D g2d) {
 		int w = getWidth();
 		int h = getHeight();
@@ -263,12 +515,33 @@ public class GamePanel extends JPanel {
 		g2d.setFont(new Font("SansSerif", Font.BOLD, 20));
 		g2d.drawString("ÂM THANH", panelX + 40, panelY + 70);
 		drawToggleButton(g2d, isSoundOn ? "BẬT" : "TẮT", panelX + 240, panelY + 45, isSoundOn);
+		drawSelectionOutline(g2d, panelX + 240, panelY + 45, 110, 35,
+				selectedSettingsOption == SETTINGS_OPTION_SOUND);
 
 		g2d.setColor(Color.WHITE);
 		g2d.drawString("GIAO DIỆN", panelX + 40, panelY + 150);
 		drawToggleButton(g2d, isNeonTheme ? "NEON" : "CỔ ĐIỂN", panelX + 240, panelY + 125, isNeonTheme);
+		drawSelectionOutline(g2d, panelX + 240, panelY + 125, 110, 35,
+				selectedSettingsOption == SETTINGS_OPTION_THEME);
 
 		drawButton(g2d, "QUAY LẠI", w / 2 - 100, h - 100, 200, 50);
+		drawSelectionOutline(g2d, w / 2 - 100, h - 100, 200, 50,
+				selectedSettingsOption == SETTINGS_OPTION_BACK);
+	}
+
+	// UI-01: Vẽ viền sáng cho lựa chọn đang được focus bằng bàn phím.
+	private void drawSelectionOutline(Graphics2D g2d, int x, int y, int w, int h, boolean selected) {
+		if (!selected) {
+			return;
+		}
+
+		Stroke oldStroke = g2d.getStroke();
+		g2d.setStroke(new BasicStroke(3));
+		g2d.setColor(new Color(255, 230, 90));
+		g2d.drawRoundRect(x - 7, y - 7, w + 14, h + 14, 22, 22);
+		g2d.setColor(new Color(255, 230, 90, 70));
+		g2d.drawRoundRect(x - 12, y - 12, w + 24, h + 24, 28, 28);
+		g2d.setStroke(oldStroke);
 	}
 
 	private void drawToggleButton(Graphics2D g2d, String text, int x, int y, boolean isActive) {
@@ -322,114 +595,96 @@ public class GamePanel extends JPanel {
 		drawText(g2d, "GAME", cx + 160, cy, 75, new Color(255, 30, 50));
 	}
 
+	// UI-01: Vẽ cụm chức năng phụ dưới Main Menu.
+	// Gồm: Chế độ chơi, Độ khó, Điểm cao và Cài đặt.
 	private void drawBottomPanels(Graphics2D g2d, int w, int h) {
 
-	    int boxW = 200;
+	    int boxW = 165;
 	    int boxH = 55;
-	    int gap = 20;
+	    int gap = 16;
 
-	    int startX = (w - (boxW * 3 + gap * 2)) / 2;
+	    int startX = (w - (boxW * 4 + gap * 3)) / 2;
 	    int y = h - 90;
 
+	    int highScore = 0;
+	    if (currentModel != null && currentModel.getScoreManager() != null) {
+	        highScore = currentModel.getScoreManager().getHighScore();
+	    }
+
+	    String modeText = "CLASSIC";
+	    Color modeColor = new Color(80, 255, 120);
+	    if (currentModel != null && currentModel.getCurrentMode() == GameMode.SURVIVAL) {
+	        modeText = "SURVIVAL";
+	        modeColor = new Color(255, 80, 80);
+	    }
+
+	    DifficultyLevel difficulty = DifficultyLevel.NORMAL;
+	    if (currentModel != null && currentModel.getDifficultyLevel() != null) {
+	        difficulty = currentModel.getDifficultyLevel();
+	    }
+
+	    String difficultyText = difficulty.getLabel();
+	    Color difficultyColor = switch (difficulty) {
+	    case EASY -> new Color(80, 255, 120);
+	    case NORMAL -> new Color(80, 180, 255);
+	    case HARD -> new Color(255, 90, 90);
+	    };
+
 	    String[] titles = {
-	            "CHẾ ĐỘ CHƠI",
+	            "CHẾ ĐỘ",
+	            "ĐỘ KHÓ",
 	            "ĐIỂM CAO",
 	            "CÀI ĐẶT"
 	    };
 
-	    int highScore = 0;
-
-	    if (currentModel != null &&
-	            currentModel.getScoreManager() != null) {
-
-	        highScore =
-	                currentModel.getScoreManager().getHighScore();
-	    }
-
-	    // =========================
-	    // MODE TEXT ĐỘNG
-	    // =========================
-	    String modeText = "CLASSIC";
-	    Color modeColor = new Color(80, 255, 120);
-
-	    if (currentModel != null &&
-	            currentModel.getCurrentMode() != null) {
-
-	        if (currentModel.getCurrentMode() == model.GameMode.SURVIVAL) {
-	            modeText = "SURVIVAL";
-	            modeColor = new Color(255, 80, 80);
-	        }
-	    }
-
 	    String[] subs = {
 	            modeText,
+	            difficultyText,
 	            String.valueOf(highScore),
-	            "ÂM THANH | GIAO DIỆN"
+	            "OPTIONS"
 	    };
 
-	    for (int i = 0; i < 3; i++) {
-	        int bx = startX + i * (boxW + gap);
-	        
-	        if (i == 0) {
-	            Color activeGlow = modeText.equals("SURVIVAL")
-	                    ? new Color(255, 80, 80, 70)
-	                    : new Color(80, 255, 120, 70);
+	    Color[] subColors = {
+	            modeColor,
+	            difficultyColor,
+	            new Color(255, 220, 80),
+	            new Color(200, 120, 255)
+	    };
 
+	    for (int i = 0; i < 4; i++) {
+	        int bx = startX + i * (boxW + gap);
+
+	        boolean isSelectedMenuPanel = (i == 0 && selectedMenuOption == MENU_OPTION_MODE)
+	                || (i == 1 && selectedMenuOption == MENU_OPTION_DIFFICULTY)
+	                || (i == 3 && selectedMenuOption == MENU_OPTION_SETTINGS);
+
+	        if (i == 0 || i == 1) {
+	            Color activeGlow = new Color(
+	                    subColors[i].getRed(),
+	                    subColors[i].getGreen(),
+	                    subColors[i].getBlue(),
+	                    65
+	            );
 	            g2d.setColor(activeGlow);
 	            g2d.fillRoundRect(bx - 8, y - 8, boxW + 16, boxH + 16, 18, 18);
 	        }
-	        
-	        // Glow
-	        g2d.setColor(new Color(0, 150, 255, 40));
-	        g2d.fillRoundRect(
-	                bx - 3,
-	                y - 3,
-	                boxW + 6,
-	                boxH + 6,
-	                15,
-	                15
-	        );
 
-	        // Box
+	        g2d.setColor(new Color(0, 150, 255, 40));
+	        g2d.fillRoundRect(bx - 3, y - 3, boxW + 6, boxH + 6, 15, 15);
+
 	        g2d.setColor(new Color(0, 150, 255));
 	        g2d.setStroke(new BasicStroke(2));
+	        g2d.drawRoundRect(bx, y, boxW, boxH, 15, 15);
 
-	        g2d.drawRoundRect(
-	                bx,
-	                y,
-	                boxW,
-	                boxH,
-	                12,
-	                12
-	        );
+	        g2d.setFont(new Font("SansSerif", Font.BOLD, 12));
+	        g2d.setColor(new Color(180, 220, 255));
+	        drawCenteredString(g2d, titles[i], bx + boxW / 2, y + 20);
 
-	        // TITLE
-	        g2d.setColor(Color.WHITE);
-	        g2d.setFont(new Font("SansSerif", Font.BOLD, 13));
+	        g2d.setFont(new Font("Consolas", Font.BOLD, 16));
+	        g2d.setColor(subColors[i]);
+	        drawCenteredString(g2d, subs[i], bx + boxW / 2, y + 43);
 
-	        FontMetrics fmT = g2d.getFontMetrics();
-
-	        g2d.drawString(
-	                titles[i],
-	                bx + (boxW - fmT.stringWidth(titles[i])) / 2,
-	                y + 22
-	        );
-
-	        if (i == 0) {
-	            g2d.setColor(modeColor);
-	        } else {
-	            g2d.setColor(new Color(150, 200, 255));
-	        }
-
-	        g2d.setFont(new Font("SansSerif", Font.PLAIN, 10));
-
-	        FontMetrics fmS = g2d.getFontMetrics();
-
-	        g2d.drawString(
-	                subs[i],
-	                bx + (boxW - fmS.stringWidth(subs[i])) / 2,
-	                y + 40
-	        );
+	        drawSelectionOutline(g2d, bx, y, boxW, boxH, isSelectedMenuPanel);
 	    }
 	}
 
@@ -503,6 +758,7 @@ public class GamePanel extends JPanel {
 	// ================================
 	// THEME NEON
 	// ================================
+	// UI-01: Vẽ giao diện game theo phong cách Neon.
 	private void drawNeonTheme(Graphics2D g2d) {
 		// Background tổng
 		g2d.setColor(new Color(8, 8, 12));
@@ -527,6 +783,7 @@ public class GamePanel extends JPanel {
 		g2d.setColor(new Color(0, 255, 200, 90));
 		g2d.setStroke(new BasicStroke(2));
 		g2d.drawLine(GAME_AREA_WIDTH, 0, GAME_AREA_WIDTH, GAME_AREA_HEIGHT);
+		drawWalls(g2d);
 		
 		// FOOD
 		if (currentModel.getFood() != null && currentModel.getFood().getPosition() != null) {
@@ -569,6 +826,7 @@ public class GamePanel extends JPanel {
 	// ================================
 	// THEME CỔ ĐIỂN
 	// ================================
+	// UI-01: Vẽ giao diện game theo phong cách cổ điển.
 	private void drawClassicTheme(Graphics2D g2d) {
 	    // Nền tổng
 	    g2d.setColor(new Color(12, 12, 12));
@@ -591,6 +849,7 @@ public class GamePanel extends JPanel {
 	    g2d.setColor(new Color(180, 180, 180));
 	    g2d.setStroke(new BasicStroke(2));
 	    g2d.drawRect(0, 0, GAME_AREA_WIDTH - 1, GAME_AREA_HEIGHT - 1);
+	    drawWalls(g2d);
 
 	    // Food: đỏ đơn giản
 	    if (currentModel.getFood() != null && currentModel.getFood().getPosition() != null) {
@@ -621,6 +880,56 @@ public class GamePanel extends JPanel {
 	        }
 	    }
 	}
+	
+	private void drawWalls(Graphics2D g2d) {
+
+	    if (currentModel == null
+	            || currentModel.getWall() == null
+	            || currentModel.getWall().getWalls() == null) {
+	        return;
+	    }
+
+	    java.util.List<Point> walls = currentModel.getWall().getWalls();
+
+	    for (Point wall : walls) {
+
+	        int x = wall.x * CELL_SIZE;
+	        int y = wall.y * CELL_SIZE;
+
+	        // Glow effect
+	        g2d.setColor(new Color(0, 255, 255, 40));
+	        g2d.fillRoundRect(
+	                x - 2,
+	                y - 2,
+	                CELL_SIZE + 4,
+	                CELL_SIZE + 4,
+	                10,
+	                10
+	        );
+
+	        // Main block
+	        g2d.setColor(new Color(0, 255, 200));
+	        g2d.fillRoundRect(
+	                x,
+	                y,
+	                CELL_SIZE,
+	                CELL_SIZE,
+	                8,
+	                8
+	        );
+
+	        // Border
+	        g2d.setColor(Color.WHITE);
+	        g2d.drawRoundRect(
+	                x,
+	                y,
+	                CELL_SIZE,
+	                CELL_SIZE,
+	                8,
+	                8
+	        );
+	    }
+	}
 
 	private void drawRightSidebar(Graphics2D g2d) {
 		int x = GAME_AREA_WIDTH;
@@ -639,10 +948,15 @@ public class GamePanel extends JPanel {
 		int currentScore = 0;
 		int highScore = 0;
 		String stateText = "N/A";
+		String difficultyText = "NORMAL";
 
 		if (currentModel != null && currentModel.getScoreManager() != null) {
 			currentScore = currentModel.getScoreManager().getCurrentScore();
 			highScore = currentModel.getScoreManager().getHighScore();
+		}
+
+		if (currentModel != null && currentModel.getDifficultyLevel() != null) {
+			difficultyText = currentModel.getDifficultyLevel().getLabel();
 		}
 
 		if (currentModel != null) {
@@ -677,7 +991,7 @@ public class GamePanel extends JPanel {
 		// CARD 1: THÔNG TIN
 		// =========================
 		int infoY = 68;
-		int infoH = 145;
+		int infoH = 175;
 		drawSidebarSection(g2d, "THÔNG TIN", cardX, infoY, cardW, infoH);
 
 		int valueRightX = cardX + cardW - 22;
@@ -690,18 +1004,21 @@ public class GamePanel extends JPanel {
 		drawInfoRow(g2d, "Điểm hiện tại", String.valueOf(currentScore), cardX + 18, infoY + 126, valueRightX,
 				Color.WHITE);
 
+		drawInfoRow(g2d, "Độ khó", difficultyText, cardX + 18, infoY + 158, valueRightX,
+				new Color(120, 220, 255));
+
 		// =========================
 		// CARD 2: ĐIỀU KHIỂN
 		// =========================
-		int controlY = 228;
-		int controlH = 165;
+		int controlY = 258;
+		int controlH = 145;
 		drawSidebarSection(g2d, "ĐIỀU KHIỂN", cardX, controlY, cardW, controlH);
 
 		int keySize = 34;
 		int gap = 10;
 		int clusterWidth = keySize * 3 + gap * 2;
 		int clusterX = x + (w - clusterWidth) / 2;
-		int clusterY = controlY + 48;
+		int clusterY = controlY + 40;
 
 		drawKeyBox(g2d, "↑", clusterX + keySize + gap, clusterY, keySize, keySize);
 		drawKeyBox(g2d, "←", clusterX, clusterY + keySize + gap, keySize, keySize);
@@ -711,13 +1028,13 @@ public class GamePanel extends JPanel {
 		// Đẩy dòng này xuống dưới cụm phím, tránh bị đè
 		g2d.setFont(new Font("SansSerif", Font.PLAIN, 14));
 		g2d.setColor(new Color(210, 220, 235));
-		drawCenteredString(g2d, "Hoặc dùng W / A / S / D", x + w / 2, controlY + 145);
+		drawCenteredString(g2d, "Hoặc dùng W / A / S / D", x + w / 2, controlY + 128);
 
 		// =========================
 		// CARD 3: HƯỚNG DẪN
 		// =========================
-		int guideY = 410;
-		int guideH = 180;
+		int guideY = 418;
+		int guideH = 172;
 		drawSidebarSection(g2d, "HƯỚNG DẪN", cardX, guideY, cardW, guideH);
 
 		g2d.setFont(new Font("SansSerif", Font.PLAIN, 14));
@@ -726,12 +1043,12 @@ public class GamePanel extends JPanel {
 		// Dòng đầu tiên phải nằm dưới divider, không được trùng y + 38
 		int lineX = cardX + 16;
 		int lineY = guideY + 62;
-		int lineGap = 28;
+		int lineGap = 25;
 
 		g2d.drawString("• ENTER : Bắt đầu / chơi lại", lineX, lineY);
 		g2d.drawString("• P      : Tạm dừng / tiếp tục", lineX, lineY + lineGap);
 		g2d.drawString("• ESC    : Về menu chính", lineX, lineY + lineGap * 2);
-		g2d.drawString("• Ăn thức ăn để tăng 10 điểm", lineX, lineY + lineGap * 3);
+		g2d.drawString("• Menu: chọn độ khó trước khi chơi", lineX, lineY + lineGap * 3);
 		g2d.drawString("• Tránh tường và thân rắn", lineX, lineY + lineGap * 4);
 	}
 
@@ -885,4 +1202,9 @@ public class GamePanel extends JPanel {
 	    g2d.setColor(Color.WHITE);
 	    g2d.drawString(modeFeedbackText, x + padX, y + 22);
 	}
+
+	public void setInputHandler(InputHandler inputHandler) {
+        this.inputHandler = inputHandler;
+    }
+	
 }

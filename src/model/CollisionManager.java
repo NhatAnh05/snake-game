@@ -34,12 +34,22 @@ public class CollisionManager {
         }
         return false;
     }
+    
+    public boolean checkObstacleCollision(Point head, List<Point> walls) {
+        if (head == null || walls == null) {
+            return false;
+        }
 
-    public boolean checkCollision(Snake snake) {
+        return walls.contains(head);
+    }
+
+    public boolean checkCollision(Snake snake, List<Point> walls) {
         if (snake == null || snake.getBody() == null || snake.getBody().isEmpty()) {
             return false;
         }
+
         return checkWallCollision(snake.getHead())
-                || checkSelfCollision(snake.getBody());
+                || checkSelfCollision(snake.getBody())
+                || checkObstacleCollision(snake.getHead(), walls);
     }
 }

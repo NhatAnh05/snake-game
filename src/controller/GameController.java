@@ -2,6 +2,7 @@ package controller;
 
 import model.CollisionManager;
 
+import model.DifficultyLevel;
 import model.GameMode;
 import model.Direction;
 import model.GameModel;
@@ -11,6 +12,7 @@ import model.Snake;
 import view.GameUI;
 
 import javax.swing.Timer;
+import java.util.List;
 
 public class GameController {
 	private final GameModel model;
@@ -18,6 +20,7 @@ public class GameController {
 	private final Timer gameLoop;
 	private final InputHandler inputHandler;
 	private final CollisionManager collisionManager;
+	private long lastPauseTime = 0;
 
 	public GameController(GameModel model, GameUI view) {
 		this.model = model;
@@ -27,8 +30,22 @@ public class GameController {
 		this.collisionManager = new CollisionManager(40, 30);
 
 		this.gameLoop = new Timer(getDelayByMode(), event -> updateGame());
+		
+		// =========================================================================
+		// [UC05] - NHẬT ANH
+		// PHẦN CHỈNH SỬA ĐỂ SỬA LỖI BÀN PHÍM VIE:
+		// Ra lệnh cho Java vô hiệu hóa bộ gõ tiếng Việt hệ thống (IME) trên cửa sổ game.
+		// Giúp ngăn chặn việc hệ điều hành tự ý chặn phím và sinh ra mã 229 (VK_PROCESSKEY).
+		// =========================================================================
+		this.view.enableInputMethods(false);
+		this.view.getGamePanel().enableInputMethods(false);
 
+		// Gắn bộ lắng nghe phím cho cả Frame chính và Panel để tránh mất tiêu điểm (Focus)
 		this.view.addKeyListener(inputHandler);
+		this.view.getGamePanel().addKeyListener(inputHandler); 
+		
+		// Đồng bộ bộ xử lý phím vào GamePanel để giải quyết triệt để vấn đề Key Bindings chặn phím
+		this.view.getGamePanel().setInputHandler(inputHandler); 
 
 		this.view.getGamePanel().setOnStartAction(() -> {
 			handleStartOrRestartRequest();
@@ -43,13 +60,16 @@ public class GameController {
 
 	public void handleStartOrRestartRequest() {
 		if (model.getCurrentState() == GameState.MENU || model.getCurrentState() == GameState.GAME_OVER) {
-
 			model.prepareNewGame();
 			gameLoop.setDelay(getDelayByMode()); 
 			gameLoop.start();
 
 			view.render(model);
+			
+			// 🌟 ÉP FOCUS CỰC MẠNH: Buộc cả Frame và Panel phải tập trung đón bàn phím ngay khi vào trận
 			view.requestFocusInWindow();
+			view.getGamePanel().setFocusable(true);
+			view.getGamePanel().requestFocusInWindow();
 		}
 	}
 
@@ -90,15 +110,23 @@ public class GameController {
 		// Di chuyển rắn
 		snake.move();
 
-		// Nếu ăn mồi thì tăng điểm và sinh food mới
+		// Nếu ăn mồi thì tăng điểm, sinh food mới và cập nhật tốc độ theo độ khó.
 		if (willEat) {
             snake.grow();
 			model.getScoreManager().addScore();
 			model.getFood().spawn(snake.getBody());
+
+			while (model.getWall().contains(model.getFood().getPosition())) {
+			    model.getFood().spawn(snake.getBody());
+			}
+
+			// UI-01: Timer phải áp dụng đúng độ khó đã chọn trong Main Menu.
+			gameLoop.setDelay(getDelayByMode());
 		}
 
-		// Kiểm tra va chạm sau khi rắn đã di chuyển
-		if (collisionManager.checkCollision(snake)) {
+		List<Point> walls = model.getWall().getWalls();
+
+		if (collisionManager.checkCollision(snake, walls)) {
 			handleGameOver();
 			return;
 		}
@@ -148,6 +176,13 @@ public class GameController {
 	}
 
 	public void togglePause() {
+		long currentTime = System.currentTimeMillis();
+		// 🌟 CHẶN ĐỨNG: Nếu 2 lần kích hoạt cách nhau dưới 200 mili-giây thì bỏ qua lần 2
+		if (currentTime - lastPauseTime < 200) {
+			return;
+		}
+		lastPauseTime = currentTime;
+
 		if (model.getCurrentState() == GameState.PLAYING) {
 			pauseGame();
 		} else if (model.getCurrentState() == GameState.PAUSED) {
@@ -177,20 +212,21 @@ public class GameController {
 		}
 	}
 
+	// UI-01: Tính tốc độ game dựa trên độ khó Easy / Normal / Hard.
+	// Nếu ở chế độ Survival, tốc độ tiếp tục tăng dần theo điểm số.
 	private int getDelayByMode() {
-	    if (model.getCurrentMode() == GameMode.SURVIVAL) {
+	    DifficultyLevel difficulty = model.getDifficultyLevel();
+	    int baseDelay = difficulty != null ? difficulty.getDelay() : DifficultyLevel.NORMAL.getDelay();
 
+	    if (model.getCurrentMode() == GameMode.SURVIVAL) {
 	        int score = model.getScoreManager() != null
 	                ? model.getScoreManager().getCurrentScore()
 	                : 0;
 
-	        // tăng tốc rõ ràng hơn
-	        int base = 140;
 	        int speedUp = (score / 3) * 8;
-
-	        return Math.max(55, base - speedUp);
+	        return Math.max(45, baseDelay - speedUp);
 	    }
 
-	    return 140;
+	    return baseDelay;
 	}
 }

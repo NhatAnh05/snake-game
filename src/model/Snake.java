@@ -51,11 +51,13 @@ public class Snake {
         return direction;
     }
 
+    // UC02-MF-07: Cập nhật hướng di chuyển mới cho rắn khi hướng hợp lệ.
     public void setDirection(Direction newDirection) {
         if (newDirection == null) {
             return;
         }
 
+        // UC02-AF03: Không cho rắn quay ngược trực tiếp 180 độ.
         if (isOppositeDirection(newDirection)) {
             return;
         }

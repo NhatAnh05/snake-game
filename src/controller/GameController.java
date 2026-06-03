@@ -30,7 +30,7 @@ public class GameController {
 		this.collisionManager = new CollisionManager(40, 30);
 
 		this.gameLoop = new Timer(getDelayByMode(), event -> updateGame());
-		
+
 		// =========================================================================
 		// [UC05] - NHẬT ANH
 		// PHẦN CHỈNH SỬA ĐỂ SỬA LỖI BÀN PHÍM VIE:
@@ -42,10 +42,10 @@ public class GameController {
 
 		// Gắn bộ lắng nghe phím cho cả Frame chính và Panel để tránh mất tiêu điểm (Focus)
 		this.view.addKeyListener(inputHandler);
-		this.view.getGamePanel().addKeyListener(inputHandler); 
-		
+		this.view.getGamePanel().addKeyListener(inputHandler);
+
 		// Đồng bộ bộ xử lý phím vào GamePanel để giải quyết triệt để vấn đề Key Bindings chặn phím
-		this.view.getGamePanel().setInputHandler(inputHandler); 
+		this.view.getGamePanel().setInputHandler(inputHandler);
 
 		this.view.getGamePanel().setOnStartAction(() -> {
 			handleStartOrRestartRequest();
@@ -61,12 +61,13 @@ public class GameController {
 	public void handleStartOrRestartRequest() {
 		if (model.getCurrentState() == GameState.MENU || model.getCurrentState() == GameState.GAME_OVER) {
 			model.prepareNewGame();
-			gameLoop.setDelay(getDelayByMode()); 
+			gameLoop.setDelay(getDelayByMode());
 			gameLoop.start();
 
 			view.render(model);
-			
+
 			// 🌟 ÉP FOCUS CỰC MẠNH: Buộc cả Frame và Panel phải tập trung đón bàn phím ngay khi vào trận
+			// [UI-03] Chức năng thay đổi/Tối ưu điều hướng: Ép focus cửa sổ và Panel nhận diện phím điều khiển ngay khi chuyển trạng thái game
 			view.requestFocusInWindow();
 			view.getGamePanel().setFocusable(true);
 			view.getGamePanel().requestFocusInWindow();
@@ -105,22 +106,42 @@ public class GameController {
 		 * ăn mồi.
 		 */
 		Point nextHead = getNextHead(snake);
-        boolean willEat = collisionManager.checkFoodCollision(nextHead, foodPos);
+		boolean willEat = collisionManager.checkFoodCollision(nextHead, foodPos);
 
 		// Di chuyển rắn
 		snake.move();
 
-		// Nếu ăn mồi thì tăng điểm, sinh food mới và cập nhật tốc độ theo độ khó.
+		// --- XỬ LÝ KHI RẮN THU THẬP ĐƯỢC FOOD ---
 		if (willEat) {
-            snake.grow();
-			model.getScoreManager().addScore();
-			model.getFood().spawn(snake.getBody());
+			snake.grow();
 
-			while (model.getWall().contains(model.getFood().getPosition())) {
-			    model.getFood().spawn(snake.getBody());
+			//  CẬP NHẬT: Kiểm tra mồi đặc biệt để kích hoạt hiệu ứng nhân điểm
+			// [UI-03] Chức năng thay đổi/Cơ chế cộng điểm: Kiểm tra trạng thái thuộc tính isSpecial của mồi để phân loại thưởng điểm (30 điểm so với 10 điểm)
+			if (model.getFood().isSpecial()) {
+				// Cách 1: Nếu hàm addScore(int points) của bạn nhận tham số điểm cụ thể
+				model.getScoreManager().addScore(30); // Cộng hẳn 30 điểm (Gấp 3 lần mồi thường)
+
+				/* * Cách 2: (Dự phòng) Nếu hàm addScore() của bạn không nhận tham số,
+				 * bạn có thể gọi hàm này 3 lần liên tiếp để tăng điểm nhanh:
+				 * model.getScoreManager().addScore();
+				 * model.getScoreManager().addScore();
+				 * model.getScoreManager().addScore();
+				 */
+			} else {
+				model.getScoreManager().addScore(10); // Mồi thường cộng 10 điểm
 			}
 
-			// UI-01: Timer phải áp dụng đúng độ khó đã chọn trong Main Menu.
+			// Sinh mồi mới và check trùng thân rắn
+			model.getFood().spawn(snake.getBody());
+
+			// Check trùng tường vật cản (Chế độ Survival)
+			while (model.getWall().contains(model.getFood().getPosition())) {
+				model.getFood().spawn(snake.getBody());
+			}
+
+			// Cập nhật lại tốc độ nhịp game (Timer)
+			// Trong chế độ Survival, điểm tăng vọt từ Special Food sẽ kích hoạt tăng tốc độ ngay lập tức!
+			// [UI-03] Chức năng thay đổi/Độ trễ nhịp: Đồng bộ thay đổi vận tốc của vòng lặp GameLoop ngay lập tức dựa trên điểm số mới tăng từ mồi đặc biệt
 			gameLoop.setDelay(getDelayByMode());
 		}
 
@@ -133,7 +154,6 @@ public class GameController {
 
 		view.render(model);
 	}
-
 	private Point getNextHead(Snake snake) {
 		Point head = snake.getBody().get(0);
 		Point nextHead = new Point(head.x, head.y);
@@ -141,10 +161,10 @@ public class GameController {
 		Direction direction = snake.getDirection();
 
 		switch (direction) {
-		case UP -> nextHead.y--;
-		case DOWN -> nextHead.y++;
-		case LEFT -> nextHead.x--;
-		case RIGHT -> nextHead.x++;
+			case UP -> nextHead.y--;
+			case DOWN -> nextHead.y++;
+			case LEFT -> nextHead.x--;
+			case RIGHT -> nextHead.x++;
 		}
 
 		return nextHead;
@@ -168,7 +188,7 @@ public class GameController {
 	public void resumeGame() {
 		if (model.getCurrentState() == GameState.PAUSED) {
 			model.setCurrentState(GameState.PLAYING);
-			gameLoop.setDelay(getDelayByMode()); 
+			gameLoop.setDelay(getDelayByMode());
 			gameLoop.start();
 			view.render(model);
 			view.requestFocusInWindow();
@@ -178,6 +198,7 @@ public class GameController {
 	public void togglePause() {
 		long currentTime = System.currentTimeMillis();
 		// 🌟 CHẶN ĐỨNG: Nếu 2 lần kích hoạt cách nhau dưới 200 mili-giây thì bỏ qua lần 2
+		// [UI-03] Chức năng thay đổi/Điều khiển: Tích hợp biến chặn thời gian chống lỗi dính phím/nhấp nháy khi nhấn nút Pause quá nhanh
 		if (currentTime - lastPauseTime < 200) {
 			return;
 		}
@@ -215,18 +236,18 @@ public class GameController {
 	// UI-01: Tính tốc độ game dựa trên độ khó Easy / Normal / Hard.
 	// Nếu ở chế độ Survival, tốc độ tiếp tục tăng dần theo điểm số.
 	private int getDelayByMode() {
-	    DifficultyLevel difficulty = model.getDifficultyLevel();
-	    int baseDelay = difficulty != null ? difficulty.getDelay() : DifficultyLevel.NORMAL.getDelay();
+		DifficultyLevel difficulty = model.getDifficultyLevel();
+		int baseDelay = difficulty != null ? difficulty.getDelay() : DifficultyLevel.NORMAL.getDelay();
 
-	    if (model.getCurrentMode() == GameMode.SURVIVAL) {
-	        int score = model.getScoreManager() != null
-	                ? model.getScoreManager().getCurrentScore()
-	                : 0;
+		if (model.getCurrentMode() == GameMode.SURVIVAL) {
+			int score = model.getScoreManager() != null
+					? model.getScoreManager().getCurrentScore()
+					: 0;
 
-	        int speedUp = (score / 3) * 8;
-	        return Math.max(45, baseDelay - speedUp);
-	    }
+			int speedUp = (score / 3) * 8;
+			return Math.max(45, baseDelay - speedUp);
+		}
 
-	    return baseDelay;
+		return baseDelay;
 	}
 }

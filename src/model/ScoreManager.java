@@ -14,10 +14,16 @@ public class ScoreManager {
         this.highScore = HighScoreRepository.loadHighScore();
     }
 
-    // 3.2 Tăng điểm tích lũy sau khi rắn ăn mồi
+    // Hàm mặc định cũ: Giữ lại để đảm bảo các tính năng cũ không bị lỗi biên dịch
     public void addScore() {
-        currentScore += 10;
+        addScore(10); // Tự động gọi hàm có tham số bên dưới với giá trị mặc định là 10
+    }
 
+    // [UI-03] NÂNG CẤP: Nạp chồng hàm addScore để nhận số điểm linh hoạt (10 hoặc 30)
+    public void addScore(int points) {
+        currentScore += points;
+
+        // Cơ chế check kỷ lục và ghi file ngầm (Background Thread) giữ nguyên cực kỳ mượt mà
         if (currentScore > highScore) {
             highScore = currentScore;
 

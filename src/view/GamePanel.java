@@ -447,7 +447,6 @@ public class GamePanel extends JPanel {
 			g2d.fillRect(0, 0, getWidth(), getHeight());
 		}
 	}
-
 	// UI-01: Vẽ Main Menu gồm Start, chọn chế độ chơi và Settings.
 	private void drawMenu(Graphics2D g2d) {
 		int w = getWidth();
@@ -795,8 +794,8 @@ public class GamePanel extends JPanel {
 	}
 
 	// =====================================================
-	// QUẢN LÝ ĐỒ HỌA THẾ GIỚI GAME (CORE GAME WORLD)
-	// =====================================================
+// QUẢN LÝ ĐỒ HỌA THẾ GIỚI GAME (CORE GAME WORLD)
+// =====================================================
 	private void drawGameWorld(Graphics2D g2d) {
 		// 1. Vẽ nền map và rắn theo phong cách được chọn
 		if (isNeonTheme) {
@@ -814,14 +813,42 @@ public class GamePanel extends JPanel {
 		// 4. Vẽ Sidebar thông tin bên phải ngoài rìa map chơi
 		drawRightSidebar(g2d);
 
-		// 5. Các lớp giao diện cảnh báo đè lên khi có trạng thái đặc biệt
+		// [UI-03] NÂNG CẤP NÂNG CAO: VẼ THANH ĐẾM NGƯỢC THỜI GIAN MỒI ĐẶC BIỆT
+		// Phục vụ cơ chế Tự động hủy trạng thái mồi (Food Expiry) trực quan trên giao diện
+		if (currentModel.getFood() != null && currentModel.getFood().isSpecial()) {
+			long timeLeft = currentModel.getFood().getTimeLeft();
+
+			if (timeLeft > 0) {
+				int maxWidth = 200;
+				int barWidth = (int) ((timeLeft / 7000.0) * maxWidth);
+				int x = 25;
+				int y = 50;
+				int height = 10;
+				g2d.setColor(new Color(40, 40, 40, 180));
+				g2d.fillRoundRect(x, y, maxWidth, height, 6, 6);
+				if (timeLeft > 2500) {
+
+					g2d.setColor(new Color(255, 215, 0));
+				} else {
+					long systemTime = System.currentTimeMillis();
+					if ((systemTime / 150) % 2 == 0) {
+						g2d.setColor(new Color(255, 30, 30));
+					} else {
+						g2d.setColor(new Color(255, 215, 0));
+					}
+				}
+				g2d.fillRoundRect(x, y, barWidth, height, 6, 6);
+				g2d.setColor(Color.WHITE);
+				g2d.setFont(new Font("SansSerif", Font.BOLD, 11));
+				g2d.drawString("BONUS TIME: " + (timeLeft / 1000 + 1) + "s", x + maxWidth + 12, y + 9);
+			}
+		}
 		if (currentModel.getCurrentState() == GameState.PAUSED) {
 			drawPauseOverlay(g2d);
 		} else if (currentModel.getCurrentState() == GameState.GAME_OVER) {
 			drawGameOverOverlay(g2d);
 		}
 	}
-
 	private void drawWalls(Graphics2D g2d) {
 		if (currentModel == null || currentModel.getWall() == null || currentModel.getWall().getWalls() == null) {
 			return;

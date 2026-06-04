@@ -1,7 +1,6 @@
 package controller;
 
 import model.CollisionManager;
-
 import model.DifficultyLevel;
 import model.GameMode;
 import model.Direction;
@@ -66,7 +65,7 @@ public class GameController {
 
 			view.render(model);
 
-			// 🌟 ÉP FOCUS CỰC MẠNH: Buộc cả Frame và Panel phải tập trung đón bàn phím ngay khi vào trận
+			// ÉP FOCUS CỰC MẠNH: Buộc cả Frame và Panel phải tập trung đón bàn phím ngay khi vào trận
 			// [UI-03] Chức năng thay đổi/Tối ưu điều hướng: Ép focus cửa sổ và Panel nhận diện phím điều khiển ngay khi chuyển trạng thái game
 			view.requestFocusInWindow();
 			view.getGamePanel().setFocusable(true);
@@ -98,62 +97,46 @@ public class GameController {
 			return;
 		}
 
+		// [UI-03] Cập nhật nâng cao: Kiểm tra và hủy trạng thái mồi đặc biệt nếu quá 7 giây không ăn
+		model.getFood().updateExpiration();
+
 		Snake snake = model.getSnake();
 		Point foodPos = model.getFood().getPosition();
 
-		/*
-		 * Kiểm tra ô tiếp theo của đầu rắn. Nếu ô tiếp theo trùng với food thì rắn sẽ
-		 * ăn mồi.
-		 */
 		Point nextHead = getNextHead(snake);
 		boolean willEat = collisionManager.checkFoodCollision(nextHead, foodPos);
 
-		// Di chuyển rắn
+		// Di chuyển thực thể rắn
 		snake.move();
 
-		// --- XỬ LÝ KHI RẮN THU THẬP ĐƯỢC FOOD ---
 		if (willEat) {
 			snake.grow();
 
-			//  CẬP NHẬT: Kiểm tra mồi đặc biệt để kích hoạt hiệu ứng nhân điểm
-			// [UI-03] Chức năng thay đổi/Cơ chế cộng điểm: Kiểm tra trạng thái thuộc tính isSpecial của mồi để phân loại thưởng điểm (30 điểm so với 10 điểm)
-			if (model.getFood().isSpecial()) {
-				// Cách 1: Nếu hàm addScore(int points) của bạn nhận tham số điểm cụ thể
-				model.getScoreManager().addScore(30); // Cộng hẳn 30 điểm (Gấp 3 lần mồi thường)
+			// [UI-03] Kích hoạt bộ xử lý điểm nâng cao: Tính toán phân loại mồi kết hợp hệ số Combo chuỗi thời gian
+			boolean isSpecial = model.getFood().isSpecial();
+			model.getScoreManager().processEatEvent(isSpecial);
 
-				/* * Cách 2: (Dự phòng) Nếu hàm addScore() của bạn không nhận tham số,
-				 * bạn có thể gọi hàm này 3 lần liên tiếp để tăng điểm nhanh:
-				 * model.getScoreManager().addScore();
-				 * model.getScoreManager().addScore();
-				 * model.getScoreManager().addScore();
-				 */
-			} else {
-				model.getScoreManager().addScore(10); // Mồi thường cộng 10 điểm
-			}
-
-			// Sinh mồi mới và check trùng thân rắn
+			// Tái tạo thực phẩm mới
 			model.getFood().spawn(snake.getBody());
 
-			// Check trùng tường vật cản (Chế độ Survival)
 			while (model.getWall().contains(model.getFood().getPosition())) {
 				model.getFood().spawn(snake.getBody());
 			}
 
-			// Cập nhật lại tốc độ nhịp game (Timer)
-			// Trong chế độ Survival, điểm tăng vọt từ Special Food sẽ kích hoạt tăng tốc độ ngay lập tức!
-			// [UI-03] Chức năng thay đổi/Độ trễ nhịp: Đồng bộ thay đổi vận tốc của vòng lặp GameLoop ngay lập tức dựa trên điểm số mới tăng từ mồi đặc biệt
+			// Đồng bộ hóa nhịp độ vận tốc cho vòng lặp game lập tức dựa trên điểm số mới
 			gameLoop.setDelay(getDelayByMode());
 		}
 
 		List<Point> walls = model.getWall().getWalls();
-
 		if (collisionManager.checkCollision(snake, walls)) {
+			model.getScoreManager().resetCombo(); // Đứt chuỗi combo khi chết game
 			handleGameOver();
 			return;
 		}
 
 		view.render(model);
 	}
+
 	private Point getNextHead(Snake snake) {
 		Point head = snake.getBody().get(0);
 		Point nextHead = new Point(head.x, head.y);
@@ -197,7 +180,7 @@ public class GameController {
 
 	public void togglePause() {
 		long currentTime = System.currentTimeMillis();
-		// 🌟 CHẶN ĐỨNG: Nếu 2 lần kích hoạt cách nhau dưới 200 mili-giây thì bỏ qua lần 2
+		//  CHẶN ĐỨNG: Nếu 2 lần kích hoạt cách nhau dưới 200 mili-giây thì bỏ qua lần 2
 		// [UI-03] Chức năng thay đổi/Điều khiển: Tích hợp biến chặn thời gian chống lỗi dính phím/nhấp nháy khi nhấn nút Pause quá nhanh
 		if (currentTime - lastPauseTime < 200) {
 			return;

@@ -20,6 +20,8 @@ public class GameController {
 	private final InputHandler inputHandler;
 	private final CollisionManager collisionManager;
 	private long lastPauseTime = 0;
+    private int countdownValue = 3;
+    private Timer countdownTimer;
 
 	public GameController(GameModel model, GameUI view) {
 		this.model = model;
@@ -56,23 +58,51 @@ public class GameController {
 		view.showGameScreen();
 		view.requestFocusInWindow();
 	}
+    public void handleStartOrRestartRequest() {
+        if (model.getCurrentState() == GameState.MENU || model.getCurrentState() == GameState.GAME_OVER) {
+            model.prepareNewGame();
 
-	public void handleStartOrRestartRequest() {
-		if (model.getCurrentState() == GameState.MENU || model.getCurrentState() == GameState.GAME_OVER) {
-			model.prepareNewGame();
-			gameLoop.setDelay(getDelayByMode());
-			gameLoop.start();
+            model.setCurrentState(GameState.PLAYING);
+            view.render(model);
 
-			view.render(model);
 
-			// ÉP FOCUS CỰC MẠNH: Buộc cả Frame và Panel phải tập trung đón bàn phím ngay khi vào trận
-			// [UI-03] Chức năng thay đổi/Tối ưu điều hướng: Ép focus cửa sổ và Panel nhận diện phím điều khiển ngay khi chuyển trạng thái game
-			view.requestFocusInWindow();
-			view.getGamePanel().setFocusable(true);
-			view.getGamePanel().requestFocusInWindow();
-		}
-	}
+            // ÉP FOCUS CỰC MẠNH: Buộc cả Frame và Panel phải tập trung đón bàn phím ngay khi vào trận
+            // [UI-03] Chức năng thay đổi/Tối ưu điều hướng: Ép focus cửa sổ và Panel nhận diện phím điều khiển ngay khi chuyển trạng thái game
+            view.requestFocusInWindow();
+            view.getGamePanel().setFocusable(true);
+            view.getGamePanel().requestFocusInWindow();
 
+            startCountdown();
+        }
+    }
+    private void startCountdown() {
+        countdownValue = 3;
+        if (countdownTimer != null && countdownTimer.isRunning()) {
+            countdownTimer.stop();
+        }
+
+
+        countdownTimer = new Timer(1000, event -> {
+            countdownValue--;
+            if (countdownValue < 0) {
+                countdownTimer.stop();
+
+                gameLoop.setDelay(getDelayByMode());
+                gameLoop.start();
+            }
+            view.render(model);
+        });
+        countdownTimer.start();
+        view.render(model);
+    }
+
+    public int getCountdownValue() {
+        return countdownValue;
+    }
+
+    public boolean isCountingDown() {
+        return countdownTimer != null && countdownTimer.isRunning() && countdownValue >= 0;
+    }
 	public void requestChangeDirection(Direction newDirection) {
 		if (!isGamePlaying()) {
 			return;
@@ -194,10 +224,9 @@ public class GameController {
 		}
 	}
 
-	public boolean isGamePlaying() {
-		return model.getCurrentState() == GameState.PLAYING;
-	}
-
+    public boolean isGamePlaying() {
+        return model.getCurrentState() == GameState.PLAYING && countdownValue < 0;
+    }
 	public boolean isGamePaused() {
 		return model.getCurrentState() == GameState.PAUSED;
 	}
@@ -206,15 +235,15 @@ public class GameController {
 		return inputHandler;
 	}
 
-	public void backToMenu() {
-		if (model.getCurrentState() == GameState.GAME_OVER || model.getCurrentState() == GameState.PAUSED) {
-
-			gameLoop.stop();
-			model.setCurrentState(GameState.MENU);
-			view.render(model);
-			view.requestFocusInWindow();
-		}
-	}
+    public void backToMenu() {
+        if (model.getCurrentState() == GameState.GAME_OVER || model.getCurrentState() == GameState.PAUSED) {
+            gameLoop.stop();
+            if (countdownTimer != null) countdownTimer.stop();
+            model.setCurrentState(GameState.MENU);
+            view.render(model);
+            view.requestFocusInWindow();
+        }
+    }
 
 	// UI-01: Tính tốc độ game dựa trên độ khó Easy / Normal / Hard.
 	// Nếu ở chế độ Survival, tốc độ tiếp tục tăng dần theo điểm số.
@@ -233,4 +262,6 @@ public class GameController {
 
 		return baseDelay;
 	}
+
+
 }

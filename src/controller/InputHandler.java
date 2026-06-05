@@ -101,4 +101,8 @@ public class InputHandler extends KeyAdapter {
     public int getCurrentKeyCode() {
         return currentKeyCode;
     }
+
+    public GameController getController() {
+        return controller;
+    }
 }

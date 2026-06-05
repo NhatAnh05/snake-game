@@ -843,6 +843,33 @@ public class GamePanel extends JPanel {
 				g2d.drawString("BONUS TIME: " + (timeLeft / 1000 + 1) + "s", x + maxWidth + 12, y + 9);
 			}
 		}
+        if (inputHandler != null && inputHandler.getController() != null) {
+            var controller = inputHandler.getController();
+
+            if (controller.isCountingDown()) {
+                int countdown = controller.getCountdownValue();
+                String text = countdown == 0 ? "GO!" : String.valueOf(countdown);
+
+
+                g2d.setFont(new Font("Impact", Font.BOLD, 90));
+                FontMetrics fm = g2d.getFontMetrics();
+
+
+                int textX = (GAME_AREA_WIDTH - fm.stringWidth(text)) / 2;
+                int textY = (GAME_AREA_HEIGHT - fm.getHeight()) / 2 + fm.getAscent();
+
+                g2d.setColor(new Color(0, 0, 0, 100));
+                g2d.fillRect(0, 0, GAME_AREA_WIDTH, GAME_AREA_HEIGHT);
+
+
+                g2d.setColor(new Color(255, 50, 100, 150));
+                g2d.drawString(text, textX + 4, textY + 4);
+
+
+                g2d.setColor(new Color(255, 230, 50));
+                g2d.drawString(text, textX, textY);
+            }
+        }
 		if (currentModel.getCurrentState() == GameState.PAUSED) {
 			drawPauseOverlay(g2d);
 		} else if (currentModel.getCurrentState() == GameState.GAME_OVER) {

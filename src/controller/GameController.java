@@ -21,17 +21,29 @@ public class GameController {
 	private final CollisionManager collisionManager;
 	private long lastPauseTime = 0;
 
-    // DEV04 - UC4.4 Restart Game:
-    // Lưu thời điểm lần bắt đầu/chơi lại gần nhất để chống dội phím ENTER/R.
-    // Khớp với Chương 11: chỉ cho phép một thao tác Restart hợp lệ trong một khoảng ngắn.
-    private long lastStartRestartTime = 0;
+	// DEV04 - UC4.4 Restart Game:
+	// Lưu thời điểm lần bắt đầu/chơi lại gần nhất để chống dội phím ENTER/R.
+	// Khớp với Chương 11: chỉ cho phép một thao tác Restart hợp lệ trong một khoảng ngắn.
+	private long lastStartRestartTime = 0;
 
-    private int countdownValue = 3;
-    private Timer countdownTimer;
+	private int countdownValue = 3;
+	private Timer countdownTimer;
 
-    // DEV04 nâng cấp phần cá nhân:
-    // Timer riêng chỉ dùng để repaint hiệu ứng pulse/fade của overlay Game Over.
-    private Timer gameOverUiTimer;
+	// DEV04 nâng cấp phần cá nhân:
+	// Timer riêng chỉ dùng để repaint hiệu ứng pulse/fade của overlay Game Over.
+	private Timer gameOverUiTimer;
+
+	// =========================================================================
+	// [DEV02 - UC02] - LÊ TUẤN ANH
+	// PHẦN CẢI TIẾN CONTROL SNAKE:
+	// Lưu hướng điều khiển hợp lệ đang chờ áp dụng trong game tick tiếp theo.
+	// Mục tiêu:
+	// 1. Không cập nhật hướng rắn trực tiếp ngay tại sự kiện bàn phím.
+	// 2. Chỉ áp dụng hướng khi game loop chạy, giúp đồng bộ với vòng lặp game.
+	// 3. Chống lỗi người chơi nhấn nhiều phím quá nhanh trong cùng một tick.
+	// 4. Không ảnh hưởng các phần DEV04 Restart/Game Over và UC05 Pause/Resume đã có.
+	// =========================================================================
+	private Direction pendingDirection;
 
 	public GameController(GameModel model, GameUI view) {
 		this.model = model;
@@ -68,84 +80,109 @@ public class GameController {
 		view.showGameScreen();
 		view.requestFocusInWindow();
 	}
-    /**
-     * DEV04 - UC4.4 Restart Game / Sequence Diagram - Luồng chơi lại:
-     * 1. Player nhấn ENTER/R hoặc click nút CHƠI LẠI tại màn hình Game Over.
-     * 2. View/InputHandler chuyển yêu cầu sang GameController.
-     * 3. Controller kiểm tra trạng thái MENU/GAME_OVER trước khi khởi tạo ván mới.
-     * 4. Model reset rắn, mồi, điểm hiện tại và chuyển về PLAYING.
-     */
-    public void handleStartOrRestartRequest() {
-        long currentTime = System.currentTimeMillis();
-        // DEV04 - Chống dội phím Restart:
-        // Nếu KeyListener và Key Bindings cùng bắt ENTER/R thì chỉ xử lý lần đầu.
-        if (currentTime - lastStartRestartTime < 250) {
-            return;
-        }
-        lastStartRestartTime = currentTime;
+	/**
+	 * DEV04 - UC4.4 Restart Game / Sequence Diagram - Luồng chơi lại:
+	 * 1. Player nhấn ENTER/R hoặc click nút CHƠI LẠI tại màn hình Game Over.
+	 * 2. View/InputHandler chuyển yêu cầu sang GameController.
+	 * 3. Controller kiểm tra trạng thái MENU/GAME_OVER trước khi khởi tạo ván mới.
+	 * 4. Model reset rắn, mồi, điểm hiện tại và chuyển về PLAYING.
+	 */
+	public void handleStartOrRestartRequest() {
+		long currentTime = System.currentTimeMillis();
+		// DEV04 - Chống dội phím Restart:
+		// Nếu KeyListener và Key Bindings cùng bắt ENTER/R thì chỉ xử lý lần đầu.
+		if (currentTime - lastStartRestartTime < 250) {
+			return;
+		}
+		lastStartRestartTime = currentTime;
 
-        if (model.getCurrentState() == GameState.MENU || model.getCurrentState() == GameState.GAME_OVER) {
-            // DEV04 - UC4.4 bước 4: dừng các Timer cũ trước khi prepareNewGame()
-            // để tránh ván mới bị tick chồng từ ván Game Over trước đó.
-            gameLoop.stop();
-            if (countdownTimer != null && countdownTimer.isRunning()) {
-                countdownTimer.stop();
-            }
-            stopGameOverUiAnimation();
+		if (model.getCurrentState() == GameState.MENU || model.getCurrentState() == GameState.GAME_OVER) {
+			// DEV04 - UC4.4 bước 4: dừng các Timer cũ trước khi prepareNewGame()
+			// để tránh ván mới bị tick chồng từ ván Game Over trước đó.
+			gameLoop.stop();
+			if (countdownTimer != null && countdownTimer.isRunning()) {
+				countdownTimer.stop();
+			}
+			stopGameOverUiAnimation();
 
-            if (model.getCurrentState() == GameState.MENU) {
-                model.initializeSecureNewGame();
-            } else {
-                model.prepareNewGame();
-            }
-            model.setCurrentState(GameState.PLAYING);
-            view.render(model);
+			if (model.getCurrentState() == GameState.MENU) {
+				model.initializeSecureNewGame();
+			} else {
+				model.prepareNewGame();
+			}
+			model.setCurrentState(GameState.PLAYING);
 
-            // ÉP FOCUS CỰC MẠNH: Buộc cả Frame và Panel phải tập trung đón bàn phím ngay khi vào trận
-            // [UI-03] Chức năng thay đổi/Tối ưu điều hướng: Ép focus cửa sổ và Panel nhận diện phím điều khiển ngay khi chuyển trạng thái game
-            view.requestFocusInWindow();
-            view.getGamePanel().setFocusable(true);
-            view.getGamePanel().requestFocusInWindow();
+			// [DEV02 - UC02] - LÊ TUẤN ANH:
+			// Reset hướng chờ khi bắt đầu/chơi lại để ván mới không bị ảnh hưởng
+			// bởi input còn sót từ ván trước hoặc từ màn hình Game Over.
+			pendingDirection = null;
 
-            startCountdown();
-        }
-    }
-    private void startCountdown() {
-        countdownValue = 3;
-        if (countdownTimer != null && countdownTimer.isRunning()) {
-            countdownTimer.stop();
-        }
+			view.render(model);
+
+			// ÉP FOCUS CỰC MẠNH: Buộc cả Frame và Panel phải tập trung đón bàn phím ngay khi vào trận
+			// [UI-03] Chức năng thay đổi/Tối ưu điều hướng: Ép focus cửa sổ và Panel nhận diện phím điều khiển ngay khi chuyển trạng thái game
+			view.requestFocusInWindow();
+			view.getGamePanel().setFocusable(true);
+			view.getGamePanel().requestFocusInWindow();
+
+			startCountdown();
+		}
+	}
+	private void startCountdown() {
+		countdownValue = 3;
+		if (countdownTimer != null && countdownTimer.isRunning()) {
+			countdownTimer.stop();
+		}
 
 
-        countdownTimer = new Timer(1000, event -> {
-            countdownValue--;
-            if (countdownValue < 0) {
-                countdownTimer.stop();
+		countdownTimer = new Timer(1000, event -> {
+			countdownValue--;
+			if (countdownValue < 0) {
+				countdownTimer.stop();
 
-                gameLoop.setDelay(getDelayByMode());
-                gameLoop.start();
-            }
-            view.render(model);
-        });
-        countdownTimer.start();
-        view.render(model);
-    }
+				gameLoop.setDelay(getDelayByMode());
+				gameLoop.start();
+			}
+			view.render(model);
+		});
+		countdownTimer.start();
+		view.render(model);
+	}
 
-    public int getCountdownValue() {
-        return countdownValue;
-    }
+	public int getCountdownValue() {
+		return countdownValue;
+	}
 
-    public boolean isCountingDown() {
-        return countdownTimer != null && countdownTimer.isRunning() && countdownValue >= 0;
-    }
+	public boolean isCountingDown() {
+		return countdownTimer != null && countdownTimer.isRunning() && countdownValue >= 0;
+	}
 	public void requestChangeDirection(Direction newDirection) {
+		// =========================================================================
+		// [DEV02 - UC02] - LÊ TUẤN ANH
+		// PHẦN CẢI TIẾN CONTROL SNAKE:
+		// InputHandler chỉ gửi Direction hợp lệ vào đây.
+		// GameController tiếp tục giữ trách nhiệm kiểm tra trạng thái game và hướng mới.
+		// =========================================================================
+
 		if (!isGamePlaying()) {
+			// [DEV02 - UC02] - LÊ TUẤN ANH:
+			// Không cho phép đổi hướng khi game đang MENU, PAUSED, GAME_OVER
+			// hoặc đang countdown trước khi bắt đầu di chuyển.
+			return;
+		}
+
+		if (pendingDirection != null) {
+			// [DEV02 - UC02] - LÊ TUẤN ANH:
+			// Nếu trong cùng một game tick đã có một hướng đang chờ xử lý,
+			// bỏ qua input tiếp theo để tránh lỗi double-input làm rắn quay ngược 180 độ.
 			return;
 		}
 
 		if (validateDirection(newDirection)) {
-			model.getSnake().setDirection(newDirection);
-			view.render(model);
+			// [DEV02 - UC02] - LÊ TUẤN ANH:
+			// Không gọi Snake.setDirection() trực tiếp tại sự kiện bàn phím.
+			// Hướng hợp lệ được lưu lại và sẽ áp dụng ở đầu vòng lặp updateGame().
+			pendingDirection = newDirection;
 		}
 	}
 
@@ -154,13 +191,35 @@ public class GameController {
 			return false;
 		}
 
+		// [DEV02 - UC02] - LÊ TUẤN ANH:
+		// Ủy quyền cho Snake kiểm tra hướng đối lập.
+		// Quy tắc: RIGHT không được đổi trực tiếp sang LEFT, UP không được đổi trực tiếp sang DOWN.
 		return !model.getSnake().isOppositeDirection(newDirection);
+	}
+
+	private void applyPendingDirection() {
+		// [DEV02 - UC02] - LÊ TUẤN ANH:
+		// Áp dụng hướng chờ đúng thời điểm game tick.
+		// Điều này đồng bộ input bàn phím với vòng lặp game và giúp chuyển động ổn định hơn.
+		if (pendingDirection == null || model.getSnake() == null) {
+			return;
+		}
+
+		if (validateDirection(pendingDirection)) {
+			model.getSnake().setDirection(pendingDirection);
+		}
+
+		pendingDirection = null;
 	}
 
 	private void updateGame() {
 		if (!isGamePlaying()) {
 			return;
 		}
+
+		// [DEV02 - UC02] - LÊ TUẤN ANH:
+		// Áp dụng hướng điều khiển hợp lệ trước khi tính vị trí đầu rắn tiếp theo.
+		applyPendingDirection();
 
 		// [UI-03] Cập nhật nâng cao: Kiểm tra và hủy trạng thái mồi đặc biệt nếu quá 7 giây không ăn
 		model.getFood().updateExpiration();
@@ -253,10 +312,15 @@ public class GameController {
 	 */
 	private void handleGameOver(String reason) {
 		gameLoop.stop();
-        if (countdownTimer != null && countdownTimer.isRunning()) {
-            countdownTimer.stop();
-        }
-        countdownValue = -1;
+		if (countdownTimer != null && countdownTimer.isRunning()) {
+			countdownTimer.stop();
+		}
+		countdownValue = -1;
+
+		// [DEV02 - UC02] - LÊ TUẤN ANH:
+		// Xóa hướng chờ khi game over để người chơi không thể tiếp tục đổi hướng sau khi đã thua.
+		pendingDirection = null;
+
 		// DEV04 - UC4.2 End Game:
 		// Ghi nhận lý do thua + thời điểm kết thúc để overlay Game Over hiển thị tổng kết phiên chơi.
 		model.markGameOver(reason);
@@ -266,34 +330,38 @@ public class GameController {
 		model.getScoreManager().finalizeHighScoreOnGameOver();
 
 		view.render(model);
-        startGameOverUiAnimation();
+		startGameOverUiAnimation();
 	}
 
-    /**
-     * DEV04 nâng cấp phần cá nhân - Game Over Overlay Animation:
-     * Khi game đã GAME_OVER, logic game dừng nhưng View vẫn được repaint nhẹ để tạo hiệu ứng pulse.
-     * Timer này không cập nhật vị trí rắn nên không ảnh hưởng UC02/UC03.
-     */
-    private void startGameOverUiAnimation() {
-        stopGameOverUiAnimation();
-        gameOverUiTimer = new Timer(80, event -> {
-            if (model.getCurrentState() == GameState.GAME_OVER) {
-                view.render(model);
-            } else {
-                stopGameOverUiAnimation();
-            }
-        });
-        gameOverUiTimer.start();
-    }
+	/**
+	 * DEV04 nâng cấp phần cá nhân - Game Over Overlay Animation:
+	 * Khi game đã GAME_OVER, logic game dừng nhưng View vẫn được repaint nhẹ để tạo hiệu ứng pulse.
+	 * Timer này không cập nhật vị trí rắn nên không ảnh hưởng UC02/UC03.
+	 */
+	private void startGameOverUiAnimation() {
+		stopGameOverUiAnimation();
+		gameOverUiTimer = new Timer(80, event -> {
+			if (model.getCurrentState() == GameState.GAME_OVER) {
+				view.render(model);
+			} else {
+				stopGameOverUiAnimation();
+			}
+		});
+		gameOverUiTimer.start();
+	}
 
-    private void stopGameOverUiAnimation() {
-        if (gameOverUiTimer != null && gameOverUiTimer.isRunning()) {
-            gameOverUiTimer.stop();
-        }
-    }
+	private void stopGameOverUiAnimation() {
+		if (gameOverUiTimer != null && gameOverUiTimer.isRunning()) {
+			gameOverUiTimer.stop();
+		}
+	}
 
 	public void pauseGame() {
 		if (model.getCurrentState() == GameState.PLAYING) {
+			// [DEV02 - UC02] - LÊ TUẤN ANH:
+			// Khi tạm dừng game, xóa hướng đang chờ để tránh áp dụng input cũ lúc resume.
+			pendingDirection = null;
+
 			model.setCurrentState(GameState.PAUSED);
 			gameLoop.stop();
 			view.render(model);
@@ -327,9 +395,9 @@ public class GameController {
 		}
 	}
 
-    public boolean isGamePlaying() {
-        return model.getCurrentState() == GameState.PLAYING && countdownValue < 0;
-    }
+	public boolean isGamePlaying() {
+		return model.getCurrentState() == GameState.PLAYING && countdownValue < 0;
+	}
 	public boolean isGamePaused() {
 		return model.getCurrentState() == GameState.PAUSED;
 	}
@@ -338,21 +406,26 @@ public class GameController {
 		return inputHandler;
 	}
 
-    /**
-     * DEV04 - Alternative Flow UC4.4-AF1:
-     * Khi người chơi không chọn chơi lại mà chọn ESC/Menu, hệ thống giữ an toàn trạng thái,
-     * dừng Timer hiện tại và đưa giao diện về Main Menu.
-     */
-    public void backToMenu() {
-        if (model.getCurrentState() == GameState.GAME_OVER || model.getCurrentState() == GameState.PAUSED) {
-            gameLoop.stop();
-            if (countdownTimer != null) countdownTimer.stop();
-            stopGameOverUiAnimation();
-            model.setCurrentState(GameState.MENU);
-            view.render(model);
-            view.requestFocusInWindow();
-        }
-    }
+	/**
+	 * DEV04 - Alternative Flow UC4.4-AF1:
+	 * Khi người chơi không chọn chơi lại mà chọn ESC/Menu, hệ thống giữ an toàn trạng thái,
+	 * dừng Timer hiện tại và đưa giao diện về Main Menu.
+	 */
+	public void backToMenu() {
+		if (model.getCurrentState() == GameState.GAME_OVER || model.getCurrentState() == GameState.PAUSED) {
+			gameLoop.stop();
+			if (countdownTimer != null) countdownTimer.stop();
+			stopGameOverUiAnimation();
+
+			// [DEV02 - UC02] - LÊ TUẤN ANH:
+			// Xóa hướng chờ khi quay về menu để input điều hướng không còn tác dụng ngoài trạng thái PLAYING.
+			pendingDirection = null;
+
+			model.setCurrentState(GameState.MENU);
+			view.render(model);
+			view.requestFocusInWindow();
+		}
+	}
 
 	// UI-01: Tính tốc độ game dựa trên độ khó Easy / Normal / Hard.
 	// Nếu ở chế độ Survival, tốc độ tiếp tục tăng dần theo điểm số.

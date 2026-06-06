@@ -116,10 +116,13 @@ public class GamePanel extends JPanel {
 		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "ui01-confirm");
 		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "ui01-escape");
 		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_P, 0), "ui01-pause");
+		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_R, 0), "ui01-restart");
 
 		// --- BỔ SUNG BẢO VỆ: ĐĂNG KÝ THEO KÝ TỰ CHỮ (Dành riêng để đè bẹp Unikey VIE Telex) ---
 		inputMap.put(KeyStroke.getKeyStroke('p'), "ui01-pause");
 		inputMap.put(KeyStroke.getKeyStroke('P'), "ui01-pause");
+		inputMap.put(KeyStroke.getKeyStroke('r'), "ui01-restart");
+		inputMap.put(KeyStroke.getKeyStroke('R'), "ui01-restart");
 
 		inputMap.put(KeyStroke.getKeyStroke('w'), "ui01-up");
 		inputMap.put(KeyStroke.getKeyStroke('W'), "ui01-up");
@@ -216,6 +219,16 @@ public class GamePanel extends JPanel {
 				System.out.println("[KeyBindings] -> Bắt trúng phím P từ luồng bảo vệ.");
 				if (inputHandler != null) {
 					inputHandler.keyPressed(new KeyEvent(GamePanel.this, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_P, 'P'));
+				}
+			}
+		});
+
+		actionMap.put("ui01-restart", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				System.out.println("[KeyBindings] -> Bắt trúng phím R / Restart");
+				if (inputHandler != null) {
+					inputHandler.keyPressed(new KeyEvent(GamePanel.this, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_R, 'R'));
 				}
 			}
 		});
@@ -359,6 +372,21 @@ public class GamePanel extends JPanel {
 					} else if (btnSettings.contains(mx, my)) {
 						selectedMenuOption = MENU_OPTION_SETTINGS;
 						activateMenuOption(MENU_OPTION_SETTINGS);
+					}
+				}
+				// ================= DEV04 - UC4.4 RESTART GAME =================
+				// Player click nút CHƠI LẠI/MENU trên overlay Game Over.
+				// View chỉ gửi yêu cầu, GameController mới quyết định reset state theo Sequence Diagram.
+				else if (currentModel.getCurrentState() == GameState.GAME_OVER) {
+					Rectangle btnRestart = getGameOverRestartButtonBounds();
+					Rectangle btnMenu = getGameOverMenuButtonBounds();
+
+					if (btnRestart.contains(mx, my)) {
+						if (onStartAction != null) {
+							onStartAction.run();
+						}
+					} else if (btnMenu.contains(mx, my) && inputHandler != null) {
+						inputHandler.keyPressed(new KeyEvent(GamePanel.this, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_ESCAPE, KeyEvent.CHAR_UNDEFINED));
 					}
 				}
 				// ================= SETTINGS =================
@@ -843,9 +871,38 @@ public class GamePanel extends JPanel {
 				g2d.drawString("BONUS TIME: " + (timeLeft / 1000 + 1) + "s", x + maxWidth + 12, y + 9);
 			}
 		}
+        if (inputHandler != null && inputHandler.getController() != null) {
+            var controller = inputHandler.getController();
+
+            if (controller.isCountingDown()) {
+                int countdown = controller.getCountdownValue();
+                String text = countdown == 0 ? "GO!" : String.valueOf(countdown);
+
+
+                g2d.setFont(new Font("Impact", Font.BOLD, 90));
+                FontMetrics fm = g2d.getFontMetrics();
+
+
+                int textX = (GAME_AREA_WIDTH - fm.stringWidth(text)) / 2;
+                int textY = (GAME_AREA_HEIGHT - fm.getHeight()) / 2 + fm.getAscent();
+
+                g2d.setColor(new Color(0, 0, 0, 100));
+                g2d.fillRect(0, 0, GAME_AREA_WIDTH, GAME_AREA_HEIGHT);
+
+
+                g2d.setColor(new Color(255, 50, 100, 150));
+                g2d.drawString(text, textX + 4, textY + 4);
+
+
+                g2d.setColor(new Color(255, 230, 50));
+                g2d.drawString(text, textX, textY);
+            }
+        }
 		if (currentModel.getCurrentState() == GameState.PAUSED) {
 			drawPauseOverlay(g2d);
 		} else if (currentModel.getCurrentState() == GameState.GAME_OVER) {
+			// DEV04 - UC4.2 End Game:
+			// Khi state = GAME_OVER, View vẽ overlay kết thúc thay vì thay đổi logic game.
 			drawGameOverOverlay(g2d);
 		}
 	}
@@ -893,6 +950,8 @@ public class GamePanel extends JPanel {
 		g2d.setStroke(new BasicStroke(2));
 		g2d.drawLine(x, 0, x, h);
 
+		// DEV04 - UC4.3 Save High Score:
+		// Lấy điểm hiện tại, điểm cao và cờ phá kỷ lục từ ScoreManager để render kết quả cuối.
 		int currentScore = 0;
 		int highScore = 0;
 		String stateText = "N/A";
@@ -974,11 +1033,11 @@ public class GamePanel extends JPanel {
 		int lineY = guideY + 62;
 		int lineGap = 25;
 
-		g2d.drawString("• ENTER : Bắt đầu / chơi lại", lineX, lineY);
-		g2d.drawString("• P      : Tạm dừng / tiếp tục", lineX, lineY + lineGap);
-		g2d.drawString("• ESC    : Về menu chính", lineX, lineY + lineGap * 2);
+		g2d.drawString("• ENTER/R : Bắt đầu / chơi lại", lineX, lineY);
+		g2d.drawString("• P       : Tạm dừng / tiếp tục", lineX, lineY + lineGap);
+		g2d.drawString("• ESC     : Về menu chính", lineX, lineY + lineGap * 2);
 		g2d.drawString("• Menu: chọn độ khó trước khi chơi", lineX, lineY + lineGap * 3);
-		g2d.drawString("• Tránh tường và thân rắn", lineX, lineY + lineGap * 4);
+		g2d.drawString("• Tránh tường, vật cản và thân rắn", lineX, lineY + lineGap * 4);
 	}
 
 	private void drawInfoRow(Graphics2D g2d, String label, String value, int x, int y, int valueRightX, Color valueColor) {
@@ -1042,31 +1101,299 @@ public class GamePanel extends JPanel {
 		drawCenteredString(g2d, "Nhấn [ ESC ] để về Menu chính", GAME_AREA_WIDTH / 2, GAME_AREA_HEIGHT / 2 + 50);
 	}
 
+	/**
+	 * DEV04 - UC4.2 + UC4.3 + UC4.4:
+	 * Vẽ màn hình Game Over theo hướng hiện đại, có dấu tiếng Việt đầy đủ.
+	 * - UC4.2: hiển thị trạng thái kết thúc và lý do thua.
+	 * - UC4.3: hiển thị điểm hiện tại, điểm cao và kỷ lục mới nếu có.
+	 * - UC4.4: cung cấp nút Chơi lại và Menu chính.
+	 *
+	 * Lưu ý:
+	 * - Đã bỏ dòng footer "UC04..." để giao diện sạch hơn.
+	 * - Bố cục được tách rõ để tránh đè chữ, đè nút.
+	 */
 	private void drawGameOverOverlay(Graphics2D g2d) {
-		g2d.setColor(new Color(0, 0, 0, 185));
+		long now = System.currentTimeMillis();
+		float pulse = (float) ((Math.sin(now / 260.0) + 1.0) / 2.0);
+		int pulseAlpha = 24 + (int) (pulse * 34);
+
+		// Nền tối vừa đủ để làm nổi card Game Over.
+		g2d.setColor(new Color(0, 0, 0, 210));
 		g2d.fillRect(0, 0, GAME_AREA_WIDTH, GAME_AREA_HEIGHT);
 
-		drawText(g2d, "KẾT THÚC", GAME_AREA_WIDTH / 2, GAME_AREA_HEIGHT / 2 - 120, 60, Color.RED);
-
-		int currentScore = 0;
-		int highScore = 0;
-
-		if (currentModel != null && currentModel.getScoreManager() != null) {
-			currentScore = currentModel.getScoreManager().getCurrentScore();
-			highScore = currentModel.getScoreManager().getHighScore();
+		// Scanline nhẹ, giữ phong cách neon nhưng không gây rối mắt.
+		g2d.setColor(new Color(255, 255, 255, 6));
+		for (int y = 0; y < GAME_AREA_HEIGHT; y += 9) {
+			g2d.drawLine(0, y, GAME_AREA_WIDTH, y);
 		}
 
-		g2d.setFont(new Font("Consolas", Font.BOLD, 24));
-		g2d.setColor(Color.WHITE);
-		drawCenteredString(g2d, "SCORE: " + currentScore, GAME_AREA_WIDTH / 2, GAME_AREA_HEIGHT / 2 - 35);
+		// DEV04 - UC4.3 Save High Score:
+		// Lấy điểm hiện tại, điểm cao và thống kê phiên chơi từ ScoreManager/GameModel.
+		int currentScore = 0;
+		int highScore = 0;
+		int highScoreDelta = 0;
+		int foodEaten = 0;
+		int specialFoodEaten = 0;
+		int maxCombo = 0;
+		boolean isNewRecord = false;
+		long survivalSeconds = 0;
+		String reason = "Không xác định";
+		String modeText = "CLASSIC";
+		String difficultyText = "NORMAL";
+
+		if (currentModel != null) {
+			survivalSeconds = currentModel.getSessionDurationSeconds();
+			modeText = currentModel.getCurrentMode() == null ? "CLASSIC" : currentModel.getCurrentMode().name();
+
+			if (currentModel.getDifficultyLevel() != null) {
+				difficultyText = currentModel.getDifficultyLevel().getLabel();
+			}
+
+			if (currentModel.getScoreManager() != null) {
+				currentScore = currentModel.getScoreManager().getCurrentScore();
+				highScore = currentModel.getScoreManager().getHighScore();
+				highScoreDelta = currentModel.getScoreManager().getHighScoreDelta();
+				foodEaten = currentModel.getScoreManager().getFoodEaten();
+				specialFoodEaten = currentModel.getScoreManager().getSpecialFoodEaten();
+				maxCombo = currentModel.getScoreManager().getMaxComboCount();
+				isNewRecord = currentModel.getScoreManager().isNewHighScoreAchieved();
+			}
+
+			if (currentModel.getGameOverReason() != null && !currentModel.getGameOverReason().isBlank()) {
+				reason = currentModel.getGameOverReason();
+			}
+		}
+
+		int cardW = 680;
+		int cardH = 510;
+		int cardX = (GAME_AREA_WIDTH - cardW) / 2;
+		int cardY = 42;
+
+		// Glow ngoài card.
+		g2d.setColor(new Color(255, 55, 120, pulseAlpha));
+		g2d.fillRoundRect(cardX - 12, cardY - 12, cardW + 24, cardH + 24, 34, 34);
+
+		g2d.setColor(new Color(0, 255, 210, 14 + pulseAlpha / 3));
+		g2d.fillRoundRect(cardX - 4, cardY - 4, cardW + 8, cardH + 8, 28, 28);
+
+		GradientPaint panelPaint = new GradientPaint(
+				cardX, cardY,
+				new Color(18, 26, 48, 248),
+				cardX, cardY + cardH,
+				new Color(7, 11, 25, 248)
+		);
+		g2d.setPaint(panelPaint);
+		g2d.fillRoundRect(cardX, cardY, cardW, cardH, 28, 28);
+
+		g2d.setColor(new Color(255, 80, 125, 220));
+		g2d.setStroke(new BasicStroke(3f));
+		g2d.drawRoundRect(cardX, cardY, cardW, cardH, 28, 28);
+
+		g2d.setColor(new Color(255, 255, 255, 40));
+		g2d.setStroke(new BasicStroke(1.2f));
+		g2d.drawRoundRect(cardX + 10, cardY + 10, cardW - 20, cardH - 20, 22, 22);
+
+		// Vùng 1: Tiêu đề + lý do thua.
+		drawText(g2d, "GAME OVER", GAME_AREA_WIDTH / 2, cardY + 74, 48, new Color(255, 95, 130));
+		drawGameOverReasonPill(g2d, "Lý do: " + reason, GAME_AREA_WIDTH / 2, cardY + 106);
+
+		if (isNewRecord) {
+			String badgeText = highScoreDelta > 0 ? "KỶ LỤC MỚI  +" + highScoreDelta : "KỶ LỤC MỚI!";
+			drawNewRecordBadge(g2d, badgeText, GAME_AREA_WIDTH / 2, cardY + 136, pulseAlpha);
+		}
+
+		// Vùng 2: Điểm hiện tại + điểm cao.
+		int statY = cardY + 160;
+		int statW = 240;
+		int statH = 82;
+		int statGap = 34;
+		int leftStatX = GAME_AREA_WIDTH / 2 - statW - statGap / 2;
+		int rightStatX = GAME_AREA_WIDTH / 2 + statGap / 2;
+
+		drawGameOverStatBox(g2d, "ĐIỂM CỦA BẠN", String.valueOf(currentScore), leftStatX, statY, statW, statH, new Color(0, 255, 210));
+		drawGameOverStatBox(g2d, "ĐIỂM CAO", String.valueOf(highScore), rightStatX, statY, statW, statH, new Color(255, 220, 80));
+
+		// Vùng 3: Thống kê phiên chơi.
+		int summaryX = cardX + 52;
+		int summaryY = cardY + 262;
+		int summaryW = cardW - 104;
+		int summaryH = 136;
+		drawGameOverSummaryPanel(g2d, summaryX, summaryY, summaryW, summaryH);
+
+		drawGameOverSummaryRow(g2d, "Thời gian sống", formatDuration(survivalSeconds), summaryX + 24, summaryY + 34, summaryX + summaryW / 2 + 18, summaryY + 34);
+		drawGameOverSummaryRow(g2d, "Mồi đã ăn", foodEaten + "  (đặc biệt " + specialFoodEaten + ")", summaryX + 24, summaryY + 64, summaryX + summaryW / 2 + 18, summaryY + 64);
+		drawGameOverSummaryRow(g2d, "Combo cao nhất", "x" + Math.max(maxCombo, 1), summaryX + 24, summaryY + 94, summaryX + summaryW / 2 + 18, summaryY + 94);
+		drawGameOverSummaryRow(g2d, "Chế độ / Độ khó", modeText + " / " + difficultyText, summaryX + 24, summaryY + 124, summaryX + summaryW / 2 + 18, summaryY + 124);
+
+		// Vùng 4: Đánh giá, tách riêng khỏi nút để không bị đè.
+		String rating = buildPerformanceRating(currentScore, survivalSeconds, foodEaten, maxCombo);
+		Color ratingColor = getPerformanceRatingColor(currentScore, maxCombo);
+		drawGameOverRatingBadge(g2d, rating, GAME_AREA_WIDTH / 2, cardY + 420, ratingColor);
+
+		// Vùng 5: Hành động theo UC4.4 Restart Game.
+		Rectangle restartButton = getGameOverRestartButtonBounds();
+		Rectangle menuButton = getGameOverMenuButtonBounds();
+
+		drawGameOverButton(g2d, "CHƠI LẠI", "ENTER / R", restartButton, new Color(0, 255, 180));
+		drawGameOverButton(g2d, "MENU CHÍNH", "ESC", menuButton, new Color(120, 190, 255));
+	}
+
+	private Rectangle getGameOverRestartButtonBounds() {
+		int cardW = 680;
+		int cardX = (GAME_AREA_WIDTH - cardW) / 2;
+		int cardY = 42;
+		return new Rectangle(cardX + 92, cardY + 440, 220, 58);
+	}
+
+	private Rectangle getGameOverMenuButtonBounds() {
+		int cardW = 680;
+		int cardX = (GAME_AREA_WIDTH - cardW) / 2;
+		int cardY = 42;
+		return new Rectangle(cardX + 368, cardY + 440, 220, 58);
+	}
+
+	private void drawGameOverReasonPill(Graphics2D g2d, String text, int centerX, int y) {
+		g2d.setFont(new Font("SansSerif", Font.BOLD, 16));
+		FontMetrics fm = g2d.getFontMetrics();
+		int pillW = Math.max(280, fm.stringWidth(text) + 44);
+		int pillH = 34;
+		int pillX = centerX - pillW / 2;
+
+		g2d.setColor(new Color(255, 255, 255, 14));
+		g2d.fillRoundRect(pillX, y - 24, pillW, pillH, 18, 18);
+
+		g2d.setColor(new Color(255, 105, 135, 100));
+		g2d.setStroke(new BasicStroke(1.4f));
+		g2d.drawRoundRect(pillX, y - 24, pillW, pillH, 18, 18);
+
+		g2d.setColor(new Color(238, 243, 255));
+		drawCenteredString(g2d, text, centerX, y - 2);
+	}
+
+	private void drawNewRecordBadge(Graphics2D g2d, String text, int centerX, int y, int pulseAlpha) {
+		g2d.setFont(new Font("SansSerif", Font.BOLD, 14));
+		FontMetrics fm = g2d.getFontMetrics();
+		int badgeW = fm.stringWidth(text) + 48;
+		int badgeH = 30;
+		int badgeX = centerX - badgeW / 2;
+
+		g2d.setColor(new Color(255, 220, 80, 32 + pulseAlpha));
+		g2d.fillRoundRect(badgeX - 4, y - 21, badgeW + 8, badgeH + 8, 18, 18);
 
 		g2d.setColor(new Color(255, 220, 80));
-		drawCenteredString(g2d, "HIGH SCORE: " + highScore, GAME_AREA_WIDTH / 2, GAME_AREA_HEIGHT / 2);
+		g2d.fillRoundRect(badgeX, y - 17, badgeW, badgeH, 16, 16);
 
-		g2d.setFont(new Font("SansSerif", Font.PLAIN, 20));
+		g2d.setColor(new Color(35, 25, 6));
+		drawCenteredString(g2d, text, centerX, y + 4);
+	}
+
+	private void drawGameOverStatBox(Graphics2D g2d, String label, String value, int x, int y, int w, int h, Color accent) {
+		g2d.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 28));
+		g2d.fillRoundRect(x - 4, y - 4, w + 8, h + 8, 18, 18);
+
+		g2d.setColor(new Color(10, 18, 32, 235));
+		g2d.fillRoundRect(x, y, w, h, 18, 18);
+
+		g2d.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 170));
+		g2d.setStroke(new BasicStroke(2f));
+		g2d.drawRoundRect(x, y, w, h, 18, 18);
+
+		g2d.setFont(new Font("SansSerif", Font.BOLD, 13));
+		g2d.setColor(new Color(210, 220, 235));
+		drawCenteredString(g2d, label, x + w / 2, y + 25);
+
+		g2d.setFont(new Font("Consolas", Font.BOLD, 34));
+		g2d.setColor(accent);
+		drawCenteredString(g2d, value, x + w / 2, y + 61);
+	}
+
+	private void drawGameOverSummaryPanel(Graphics2D g2d, int x, int y, int w, int h) {
+		g2d.setColor(new Color(0, 0, 0, 85));
+		g2d.fillRoundRect(x + 3, y + 4, w, h, 20, 20);
+
+		g2d.setColor(new Color(12, 20, 34, 232));
+		g2d.fillRoundRect(x, y, w, h, 20, 20);
+
+		g2d.setColor(new Color(0, 255, 200, 110));
+		g2d.setStroke(new BasicStroke(1.8f));
+		g2d.drawRoundRect(x, y, w, h, 20, 20);
+
+		g2d.setColor(new Color(255, 255, 255, 28));
+		g2d.drawLine(x + 18, y + 18, x + w - 18, y + 18);
+	}
+
+	private void drawGameOverSummaryRow(Graphics2D g2d, String leftLabel, String leftValue, int leftX, int leftY, int rightX, int rightY) {
+		g2d.setFont(new Font("SansSerif", Font.BOLD, 14));
+		g2d.setColor(new Color(175, 190, 210));
+		g2d.drawString(leftLabel, leftX, leftY);
+
+		g2d.setFont(new Font("Consolas", Font.BOLD, 15));
+		g2d.setColor(new Color(238, 246, 255));
+		g2d.drawString(leftValue, rightX, rightY);
+	}
+
+	private void drawGameOverRatingBadge(Graphics2D g2d, String text, int centerX, int y, Color accent) {
+		g2d.setFont(new Font("SansSerif", Font.BOLD, 15));
+		FontMetrics fm = g2d.getFontMetrics();
+		int badgeW = fm.stringWidth(text) + 44;
+		int badgeH = 34;
+		int x = centerX - badgeW / 2;
+
+		g2d.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 40));
+		g2d.fillRoundRect(x - 5, y - 23, badgeW + 10, badgeH + 10, 18, 18);
+
+		g2d.setColor(new Color(12, 18, 30, 236));
+		g2d.fillRoundRect(x, y - 18, badgeW, badgeH, 16, 16);
+
+		g2d.setColor(accent);
+		g2d.setStroke(new BasicStroke(2));
+		g2d.drawRoundRect(x, y - 18, badgeW, badgeH, 16, 16);
+
+		g2d.setColor(accent);
+		drawCenteredString(g2d, text, centerX, y + 4);
+	}
+
+	private String buildPerformanceRating(int score, long survivalSeconds, int foodEaten, int maxCombo) {
+		int ratingPoint = score + foodEaten * 5 + maxCombo * 8 + (int) Math.min(60, survivalSeconds);
+		if (ratingPoint >= 260) return "ĐÁNH GIÁ: HUYỀN THOẠI";
+		if (ratingPoint >= 170) return "ĐÁNH GIÁ: XUẤT SẮC";
+		if (ratingPoint >= 90) return "ĐÁNH GIÁ: ỔN ĐỊNH";
+		return "ĐÁNH GIÁ: CẦN TẬP THÊM";
+	}
+
+	private Color getPerformanceRatingColor(int score, int maxCombo) {
+		if (score >= 200 || maxCombo >= 6) return new Color(255, 220, 80);
+		if (score >= 100 || maxCombo >= 3) return new Color(0, 255, 200);
+		return new Color(120, 190, 255);
+	}
+
+	private String formatDuration(long seconds) {
+		long minutes = seconds / 60;
+		long remainingSeconds = seconds % 60;
+		return String.format("%02d:%02d", minutes, remainingSeconds);
+	}
+
+	private void drawGameOverButton(Graphics2D g2d, String title, String hint, Rectangle rect, Color accent) {
+		long now = System.currentTimeMillis();
+		int glowAlpha = 28 + (int) (((Math.sin(now / 180.0) + 1.0) / 2.0) * 35);
+
+		g2d.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), glowAlpha));
+		g2d.fillRoundRect(rect.x - 5, rect.y - 5, rect.width + 10, rect.height + 10, 20, 20);
+
+		g2d.setColor(new Color(14, 24, 34, 238));
+		g2d.fillRoundRect(rect.x, rect.y, rect.width, rect.height, 18, 18);
+
+		g2d.setColor(accent);
+		g2d.setStroke(new BasicStroke(2.2f));
+		g2d.drawRoundRect(rect.x, rect.y, rect.width, rect.height, 18, 18);
+
+		g2d.setFont(new Font("SansSerif", Font.BOLD, 19));
 		g2d.setColor(Color.WHITE);
-		drawCenteredString(g2d, "Nhấn [ ENTER ] để chơi lại", GAME_AREA_WIDTH / 2, GAME_AREA_HEIGHT / 2 + 60);
-		drawCenteredString(g2d, "Nhấn [ ESC ] để về Menu chính", GAME_AREA_WIDTH / 2, GAME_AREA_HEIGHT / 2 + 95);
+		drawCenteredString(g2d, title, rect.x + rect.width / 2, rect.y + 24);
+
+		g2d.setFont(new Font("Consolas", Font.BOLD, 12));
+		g2d.setColor(new Color(205, 218, 235));
+		drawCenteredString(g2d, hint, rect.x + rect.width / 2, rect.y + 43);
 	}
 
 	private void drawCenteredString(Graphics2D g2d, String text, int centerX, int y) {
@@ -1124,89 +1451,88 @@ public class GamePanel extends JPanel {
 		this.inputHandler = inputHandler;
 	}
 
-	// UI-01: Vẽ mũi tên chỉ hướng đi ngay phía trước để bổ trợ cho người chơi dễ nhìn hướng đi của rắn.
-	private void drawSnakeHeadDirection(Graphics2D g2d) {
-		if (currentModel == null || currentModel.getCurrentState() != GameState.PLAYING) return;
-		if (currentModel.getSnake() == null || currentModel.getSnake().getBody() == null) return;
+    // UI-01: Vẽ mũi tên chỉ hướng đi ngay phía trước để bổ trợ cho người chơi dễ nhìn hướng đi của rắn.
+    private void drawSnakeHeadDirection(Graphics2D g2d) {
+        if (currentModel == null || currentModel.getCurrentState() != GameState.PLAYING) return;
+        if (currentModel.getSnake() == null || currentModel.getSnake().getBody() == null) return;
 
-		java.util.List<Point> body = currentModel.getSnake().getBody();
-		if (body.isEmpty()) return;
+        java.util.List<Point> body = currentModel.getSnake().getBody();
+        if (body.isEmpty()) return;
 
-		model.Direction currentDir = currentModel.getSnake().getDirection();
-		if (currentDir == null) return;
+        model.Direction currentDir = currentModel.getSnake().getDirection();
+        if (currentDir == null) return;
 
-		Point head = body.get(0);
-		int headPixelX = head.x * CELL_SIZE;
-		int headPixelY = head.y * CELL_SIZE;
-		int centerX = headPixelX + (CELL_SIZE / 2);
-		int centerY = headPixelY + (CELL_SIZE / 2);
+        Point head = body.get(0);
+        int headPixelX = head.x * CELL_SIZE;
+        int headPixelY = head.y * CELL_SIZE;
+        int centerX = headPixelX + (CELL_SIZE / 2);
+        int centerY = headPixelY + (CELL_SIZE / 2);
 
-		// [UI-03] Sửa lỗi dịch chuyển tọa độ: Thay đổi offset nhảy từ nguyên 1 ô (CELL_SIZE) thành 6 pixel để neo mũi tên luôn nằm gọn bên mép trong đầu rắn.
-		int offset = 6;
-		switch (currentDir) {
-			case UP -> centerY -= offset;
-			case DOWN -> centerY+= offset;
-			case LEFT -> centerX -= offset;
-			case RIGHT -> centerX += offset;
-		}
+        int offset = (CELL_SIZE / 2) + 22;
+        switch (currentDir) {
+            case UP -> centerY -= offset;
+            case DOWN -> centerY+= offset;
+            case LEFT -> centerX -= offset;
+            case RIGHT -> centerX += offset;
+        }
 
-		Stroke oldStroke = g2d.getStroke();
-		Color arrowColor = new Color(255, 15, 60);
+        Stroke oldStroke = g2d.getStroke();
+        Color arrowColor = new Color(255, 15, 60);
 
-		int headLength = 5;
-		int headWidth = 5;
-		int stemLength = 4;
-		int stemWidth = 2;
+        int headLength = 8;
+        int headWidth = 7;
+        int stemLength = 14;
+        int stemWidth = 3;
 
-		Polygon arrow = new Polygon();
-		switch (currentDir) {
-			case UP -> {
-				arrow.addPoint(centerX, centerY - headLength);
-				arrow.addPoint(centerX + headWidth, centerY);
-				arrow.addPoint(centerX + stemWidth, centerY);
-				arrow.addPoint(centerX + stemWidth, centerY + stemLength);
-				arrow.addPoint(centerX - stemWidth, centerY + stemLength);
-				arrow.addPoint(centerX - stemWidth, centerY);
-				arrow.addPoint(centerX - headWidth, centerY);
-			}
-			case DOWN -> {
-				arrow.addPoint(centerX, centerY + headLength);
-				arrow.addPoint(centerX + headWidth, centerY);
-				arrow.addPoint(centerX + stemWidth, centerY);
-				arrow.addPoint(centerX + stemWidth, centerY - stemLength);
-				arrow.addPoint(centerX - stemWidth, centerY - stemLength);
-				arrow.addPoint(centerX - stemWidth, centerY);
-				arrow.addPoint(centerX - headWidth, centerY);
-			}
-			case LEFT -> {
-				arrow.addPoint(centerX - headLength, centerY);
-				arrow.addPoint(centerX, centerY - headWidth);
-				arrow.addPoint(centerX, centerY - stemWidth);
-				arrow.addPoint(centerX + stemLength, centerY - stemWidth);
-				arrow.addPoint(centerX + stemLength, centerY + stemWidth);
-				arrow.addPoint(centerX, centerY + stemWidth);
-				arrow.addPoint(centerX, centerY + headWidth);
-			}
-			case RIGHT -> {
-				arrow.addPoint(centerX + headLength, centerY);
-				arrow.addPoint(centerX, centerY - headWidth);
-				arrow.addPoint(centerX, centerY - stemWidth);
-				arrow.addPoint(centerX - stemLength, centerY - stemWidth);
-				arrow.addPoint(centerX - stemLength, centerY + stemWidth);
-				arrow.addPoint(centerX, centerY + stemWidth);
-				arrow.addPoint(centerX, centerY + headWidth);
-			}
-		}
+        Polygon arrow = new Polygon();
+        switch (currentDir) {
+            case UP -> {
+                arrow.addPoint(centerX, centerY - headLength);
+                arrow.addPoint(centerX + headWidth, centerY);
+                arrow.addPoint(centerX + stemWidth, centerY);
+                arrow.addPoint(centerX + stemWidth, centerY + stemLength);
+                arrow.addPoint(centerX - stemWidth, centerY + stemLength);
+                arrow.addPoint(centerX - stemWidth, centerY);
+                arrow.addPoint(centerX - headWidth, centerY);
+            }
+            case DOWN -> {
+                arrow.addPoint(centerX, centerY + headLength);
+                arrow.addPoint(centerX + headWidth, centerY);
+                arrow.addPoint(centerX + stemWidth, centerY);
+                arrow.addPoint(centerX + stemWidth, centerY - stemLength);
+                arrow.addPoint(centerX - stemWidth, centerY - stemLength);
+                arrow.addPoint(centerX - stemWidth, centerY);
+                arrow.addPoint(centerX - headWidth, centerY);
+            }
+            case LEFT -> {
+                arrow.addPoint(centerX - headLength, centerY);
+                arrow.addPoint(centerX, centerY - headWidth);
+                arrow.addPoint(centerX, centerY - stemWidth);
+                arrow.addPoint(centerX + stemLength, centerY - stemWidth);
+                arrow.addPoint(centerX + stemLength, centerY + stemWidth);
+                arrow.addPoint(centerX, centerY + stemWidth);
+                arrow.addPoint(centerX, centerY + headWidth);
+            }
+            case RIGHT -> {
+                arrow.addPoint(centerX + headLength, centerY);
+                arrow.addPoint(centerX, centerY - headWidth);
+                arrow.addPoint(centerX, centerY - stemWidth);
+                arrow.addPoint(centerX - stemLength, centerY - stemWidth);
+                arrow.addPoint(centerX - stemLength, centerY + stemWidth);
+                arrow.addPoint(centerX, centerY + stemWidth);
+                arrow.addPoint(centerX, centerY + headWidth);
+            }
+        }
 
-		g2d.setColor(arrowColor);
-		g2d.fillPolygon(arrow);
+        g2d.setColor(arrowColor);
+        g2d.fillPolygon(arrow);
 
-		g2d.setColor(new Color(255, 255, 255, 220));
-		g2d.setStroke(new BasicStroke(1.2f));
-		g2d.drawPolygon(arrow);
+        g2d.setColor(new Color(255, 255, 255, 220));
+        g2d.setStroke(new BasicStroke(1.2f));
+        g2d.drawPolygon(arrow);
 
-		g2d.setStroke(oldStroke);
-	}
+        g2d.setStroke(oldStroke);
+    }
 
 	// CHECKLIST: Hàm render hình ảnh/màu sắc riêng biệt cho Food tập trung dựa trên Theme hiện tại
 	// [UI-03] Chức năng hiển thị: Kích hoạt toàn diện hàm vẽ mồi drawFood() tách biệt, tích hợp logic xử lý phân cấp theme (Neon/Classic) và mồi đặc biệt (Special Pulse) giúp gom cụm mã nguồn tối ưu.

@@ -1,7 +1,5 @@
 package model;
 
-import java.util.List;
-
 public class GameModel {
     private Snake snake;
     private Food food;
@@ -10,10 +8,19 @@ public class GameModel {
     private GameMode currentMode = GameMode.CLASSIC;
     private Wall wall;
 
-    // UI-01: Lưu độ khó mà người chơi chọn ở Main Menu.
-    // Giá trị này được GameController dùng để tính tốc độ Timer khi bắt đầu game.
+    // DEV04 - UC4.2 End Game / ERD SU_KIEN_GAME_OVER:
+    // Lưu nguyên nhân kết thúc ván để GamePanel hiển thị trên overlay Game Over.
+    private String gameOverReason = "";
+
+    // DEV04 - UC04 Premium Summary:
+    // Lưu mốc thời gian phiên chơi để Game Over hiển thị "thời gian sống".
+    private long sessionStartTimeMillis = 0L;
+    private long sessionEndTimeMillis = 0L;
+
+    // UI-01:
+    // Lưu độ khó mà người chơi chọn ở Main Menu.
     private DifficultyLevel difficultyLevel = DifficultyLevel.NORMAL;
-    
+
     public GameModel() {
         this.snake = new Snake();
         this.food = new Food();
@@ -22,6 +29,11 @@ public class GameModel {
         this.wall = new Wall();
     }
 
+    /**
+     * DEV04 - UC4.4 Restart Game:
+     * Reset dữ liệu phiên chơi mới gồm rắn, vật cản, mồi, điểm hiện tại và lý do Game Over.
+     * High score không bị reset vì thuộc dữ liệu thành tích lâu dài của UC4.3.
+     */
     public void prepareNewGame() {
         snake.reset(20, 15);
 
@@ -42,17 +54,73 @@ public class GameModel {
             food.spawn(snake.getBody());
         }
 
+        // DEV04 - UC4.4:
+        // Reset điểm hiện tại và thống kê phiên chơi, nhưng giữ high score lâu dài.
         scoreManager.resetScore();
+
+        this.gameOverReason = "";
+        this.sessionStartTimeMillis = System.currentTimeMillis();
+        this.sessionEndTimeMillis = 0L;
         this.currentState = GameState.PLAYING;
+    }
+
+    /**
+     * DEV04 - UC4.2 End Game:
+     * Đánh dấu thời điểm Game Over và khóa lý do thua để View đọc lại khi render overlay.
+     */
+    public void markGameOver(String reason) {
+        setGameOverReason(reason);
+        this.sessionEndTimeMillis = System.currentTimeMillis();
+        this.currentState = GameState.GAME_OVER;
+    }
+
+    /**
+     * DEV04 - UC4.2:
+     * Trả về số giây người chơi sống trong phiên chơi hiện tại.
+     */
+    public long getSessionDurationSeconds() {
+        if (sessionStartTimeMillis <= 0L) {
+            return 0L;
+        }
+
+        long end = sessionEndTimeMillis > 0L
+                ? sessionEndTimeMillis
+                : System.currentTimeMillis();
+
+        return Math.max(0L, (end - sessionStartTimeMillis) / 1000L);
+    }
+
+    public String getGameOverReason() {
+        return gameOverReason;
+    }
+
+    /**
+     * DEV04 - UC4.2:
+     * Chuẩn hóa lý do thua để View không bị null/rỗng khi vẽ Game Over.
+     */
+    public void setGameOverReason(String gameOverReason) {
+        if (gameOverReason == null || gameOverReason.isBlank()) {
+            this.gameOverReason = "Không xác định";
+        } else {
+            this.gameOverReason = gameOverReason;
+        }
     }
 
     public Wall getWall() {
         return wall;
     }
-    
-    public Snake getSnake() { return snake; }
-    public Food getFood() { return food; }
-    public ScoreManager getScoreManager() { return scoreManager; }
+
+    public Snake getSnake() {
+        return snake;
+    }
+
+    public Food getFood() {
+        return food;
+    }
+
+    public ScoreManager getScoreManager() {
+        return scoreManager;
+    }
 
     public GameState getCurrentState() {
         return currentState;
@@ -61,24 +129,46 @@ public class GameModel {
     public void setCurrentState(GameState targetState) {
         this.currentState = targetState;
     }
-    
+
     public GameMode getCurrentMode() {
         return currentMode;
     }
 
     public void setCurrentMode(GameMode currentMode) {
-        this.currentMode = currentMode;
+        if (currentMode != null) {
+            this.currentMode = currentMode;
+        }
     }
 
-    // UI-01: Trả về độ khó hiện tại để hiển thị ở Main Menu và Sidebar.
     public DifficultyLevel getDifficultyLevel() {
         return difficultyLevel;
     }
 
-    // UI-01: Cập nhật độ khó khi người chơi chọn EASY / NORMAL / HARD ở Main Menu.
     public void setDifficultyLevel(DifficultyLevel difficultyLevel) {
         if (difficultyLevel != null) {
             this.difficultyLevel = difficultyLevel;
+        }
+    }
+    //UI01
+    public void initializeSecureNewGame() {
+        this.prepareNewGame();
+
+        if (this.snake != null) {
+            this.snake.setDirection(Direction.RIGHT);
+        }
+
+        if (this.scoreManager != null) {
+            this.scoreManager.resetCombo();
+        }
+
+        if (this.food != null && this.wall != null && this.snake != null) {
+            int maxAttempts = 100;
+            int attempts = 0;
+
+            while (this.wall.contains(this.food.getPosition()) && attempts < maxAttempts) {
+                this.food.spawn(this.snake.getBody());
+                attempts++;
+            }
         }
     }
 }

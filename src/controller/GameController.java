@@ -20,6 +20,12 @@ public class GameController {
 	private final InputHandler inputHandler;
 	private final CollisionManager collisionManager;
 	private long lastPauseTime = 0;
+
+    // DEV04 - UC4.4 Restart Game:
+    // Lưu thời điểm lần bắt đầu/chơi lại gần nhất để chống dội phím ENTER/R.
+    // Khớp với Chương 11: chỉ cho phép một thao tác Restart hợp lệ trong một khoảng ngắn.
+    private long lastStartRestartTime = 0;
+
     private int countdownValue = 3;
     private Timer countdownTimer;
 
@@ -58,13 +64,33 @@ public class GameController {
 		view.showGameScreen();
 		view.requestFocusInWindow();
 	}
+    /**
+     * DEV04 - UC4.4 Restart Game / Sequence Diagram - Luồng chơi lại:
+     * 1. Player nhấn ENTER/R hoặc click nút CHƠI LẠI tại màn hình Game Over.
+     * 2. View/InputHandler chuyển yêu cầu sang GameController.
+     * 3. Controller kiểm tra trạng thái MENU/GAME_OVER trước khi khởi tạo ván mới.
+     * 4. Model reset rắn, mồi, điểm hiện tại và chuyển về PLAYING.
+     */
     public void handleStartOrRestartRequest() {
-        if (model.getCurrentState() == GameState.MENU || model.getCurrentState() == GameState.GAME_OVER) {
-            model.prepareNewGame();
+        long currentTime = System.currentTimeMillis();
+        // DEV04 - Chống dội phím Restart:
+        // Nếu KeyListener và Key Bindings cùng bắt ENTER/R thì chỉ xử lý lần đầu.
+        if (currentTime - lastStartRestartTime < 250) {
+            return;
+        }
+        lastStartRestartTime = currentTime;
 
+        if (model.getCurrentState() == GameState.MENU || model.getCurrentState() == GameState.GAME_OVER) {
+            // DEV04 - UC4.4 bước 4: dừng các Timer cũ trước khi prepareNewGame()
+            // để tránh ván mới bị tick chồng từ ván Game Over trước đó.
+            gameLoop.stop();
+            if (countdownTimer != null && countdownTimer.isRunning()) {
+                countdownTimer.stop();
+            }
+
+            model.prepareNewGame();
             model.setCurrentState(GameState.PLAYING);
             view.render(model);
-
 
             // ÉP FOCUS CỰC MẠNH: Buộc cả Frame và Panel phải tập trung đón bàn phím ngay khi vào trận
             // [UI-03] Chức năng thay đổi/Tối ưu điều hướng: Ép focus cửa sổ và Panel nhận diện phím điều khiển ngay khi chuyển trạng thái game
@@ -157,10 +183,13 @@ public class GameController {
 			gameLoop.setDelay(getDelayByMode());
 		}
 
+		// DEV04 - UC4.1 Check Collision:
+		// Sau khi Snake di chuyển trong mỗi game tick, Controller lấy danh sách vật cản
+		// và gọi CollisionManager để kiểm tra va chạm tường, thân rắn hoặc obstacle.
 		List<Point> walls = model.getWall().getWalls();
 		if (collisionManager.checkCollision(snake, walls)) {
 			model.getScoreManager().resetCombo(); // Đứt chuỗi combo khi chết game
-			handleGameOver();
+			handleGameOver(resolveGameOverReason(snake, walls));
 			return;
 		}
 
@@ -183,8 +212,48 @@ public class GameController {
 		return nextHead;
 	}
 
-	private void handleGameOver() {
+	/**
+	 * DEV04 - UC4.1 + ERD GameOverEvent:
+	 * Xác định nguyên nhân Game Over để View hiển thị rõ ràng
+	 * và mô phỏng thuộc tính collision_type trong sự kiện Game Over.
+	 */
+	private String resolveGameOverReason(Snake snake, List<Point> walls) {
+		if (snake == null || snake.getHead() == null) {
+			return "Rắn không còn vị trí hợp lệ";
+		}
+
+		Point head = snake.getHead();
+		if (collisionManager.checkWallCollision(head)) {
+			return "Đâm vào biên bản đồ";
+		}
+		if (collisionManager.checkObstacleCollision(head, walls)) {
+			return "Đâm vào vật cản";
+		}
+		if (collisionManager.checkSelfCollision(snake.getBody())) {
+			return "Cắn vào thân rắn";
+		}
+		return "Va chạm không xác định";
+	}
+
+	/**
+	 * DEV04 - UC4.2 End Game + UC4.3 Save High Score:
+	 * - Dừng game loop/countdown để rắn không tiếp tục di chuyển.
+	 * - Lưu lý do thua vào GameModel.
+	 * - Chốt/cập nhật high score trước khi render overlay Game Over.
+	 * - Chuyển state sang GAME_OVER đúng như Sequence Diagram.
+	 */
+	private void handleGameOver(String reason) {
 		gameLoop.stop();
+        if (countdownTimer != null && countdownTimer.isRunning()) {
+            countdownTimer.stop();
+        }
+        countdownValue = -1;
+		model.setGameOverReason(reason);
+
+		// DEV04 - UC4.3 Save High Score:
+		// Chốt điểm cuối ván và bảo đảm highscore.txt được cập nhật nếu phá kỷ lục.
+		model.getScoreManager().finalizeHighScoreOnGameOver();
+
 		model.setCurrentState(GameState.GAME_OVER);
 		view.render(model);
 	}
@@ -235,6 +304,11 @@ public class GameController {
 		return inputHandler;
 	}
 
+    /**
+     * DEV04 - Alternative Flow UC4.4-AF1:
+     * Khi người chơi không chọn chơi lại mà chọn ESC/Menu, hệ thống giữ an toàn trạng thái,
+     * dừng Timer hiện tại và đưa giao diện về Main Menu.
+     */
     public void backToMenu() {
         if (model.getCurrentState() == GameState.GAME_OVER || model.getCurrentState() == GameState.PAUSED) {
             gameLoop.stop();

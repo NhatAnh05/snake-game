@@ -28,20 +28,30 @@ public class InputHandler extends KeyAdapter {
         // khiến hàm isValidKey() cũ coi là phím lỗi và chặn đứng sự kiện ngay lập tức.
         // =========================================================================
 
-        // 1. ENTER: bắt đầu game từ Menu hoặc chơi lại sau khi Game Over.
+        // DEV04 - UC4.4 Restart Game:
+        // ENTER là thao tác Player chọn Chơi lại theo Main Flow bước 2.
+        // Controller sẽ tự kiểm tra state MENU/GAME_OVER trước khi reset ván chơi.
         if (currentKeyCode == KeyEvent.VK_ENTER) {
             controller.handleStartOrRestartRequest();
             return;
         }
 
-        // 2. P: Tạm dừng hoặc tiếp tục game.
+        // DEV04 - UC4.4 Restart Game:
+        // R là phím tắt bổ sung để Restart nhanh trên màn hình GAME_OVER.
+        if (currentKeyCode == KeyEvent.VK_R || keyChar == 'r') {
+            controller.handleStartOrRestartRequest();
+            return;
+        }
+
+        // 3. P: Tạm dừng hoặc tiếp tục game.
         // 🌟 PHẦN CHỈNH SỬA: Chấp nhận cả mã phím VK_P HOẶC ký tự 'p' thực tế phát ra từ Unikey.
         if (currentKeyCode == KeyEvent.VK_P || keyChar == 'p') {
             controller.togglePause();
             return; 
         }     
         
-        // 3. ESC: quay về Menu khi game đang Pause hoặc Game Over.
+        // DEV04 - UC4.4 Alternative Flow:
+        // ESC cho phép Player không Restart mà quay về Menu chính sau Game Over.
         if (currentKeyCode == KeyEvent.VK_ESCAPE) {
             controller.backToMenu();
             return;
@@ -73,7 +83,9 @@ public class InputHandler extends KeyAdapter {
             newDirection = Direction.RIGHT;
         }
 
-        // Nếu bắt được hướng đi hợp lệ thì gửi yêu cầu đổi hướng sang Controller để điều khiển rắn
+        // DEV04 - State guard sau Game Over:
+        // Khi state = GAME_OVER, GameController.requestChangeDirection() sẽ bỏ qua input điều hướng,
+        // bảo đảm rắn không tiếp tục đổi hướng sau khi đã thua.
         if (newDirection != null) {
             controller.requestChangeDirection(newDirection);
         }
@@ -95,6 +107,7 @@ public class InputHandler extends KeyAdapter {
         return mapKeyToDirection(keyCode) != null
                 || keyCode == KeyEvent.VK_ENTER
                 || keyCode == KeyEvent.VK_ESCAPE
+                || keyCode == KeyEvent.VK_R
                 || keyCode == KeyEvent.VK_P;
     }
 

@@ -29,6 +29,10 @@ public class GameController {
     private int countdownValue = 3;
     private Timer countdownTimer;
 
+    // DEV04 nâng cấp phần cá nhân:
+    // Timer riêng chỉ dùng để repaint hiệu ứng pulse/fade của overlay Game Over.
+    private Timer gameOverUiTimer;
+
 	public GameController(GameModel model, GameUI view) {
 		this.model = model;
 		this.view = view;
@@ -87,6 +91,7 @@ public class GameController {
             if (countdownTimer != null && countdownTimer.isRunning()) {
                 countdownTimer.stop();
             }
+            stopGameOverUiAnimation();
 
             model.prepareNewGame();
             model.setCurrentState(GameState.PLAYING);
@@ -248,15 +253,40 @@ public class GameController {
             countdownTimer.stop();
         }
         countdownValue = -1;
-		model.setGameOverReason(reason);
+		// DEV04 - UC4.2 End Game:
+		// Ghi nhận lý do thua + thời điểm kết thúc để overlay Game Over hiển thị tổng kết phiên chơi.
+		model.markGameOver(reason);
 
 		// DEV04 - UC4.3 Save High Score:
 		// Chốt điểm cuối ván và bảo đảm highscore.txt được cập nhật nếu phá kỷ lục.
 		model.getScoreManager().finalizeHighScoreOnGameOver();
 
-		model.setCurrentState(GameState.GAME_OVER);
 		view.render(model);
+        startGameOverUiAnimation();
 	}
+
+    /**
+     * DEV04 nâng cấp phần cá nhân - Game Over Overlay Animation:
+     * Khi game đã GAME_OVER, logic game dừng nhưng View vẫn được repaint nhẹ để tạo hiệu ứng pulse.
+     * Timer này không cập nhật vị trí rắn nên không ảnh hưởng UC02/UC03.
+     */
+    private void startGameOverUiAnimation() {
+        stopGameOverUiAnimation();
+        gameOverUiTimer = new Timer(80, event -> {
+            if (model.getCurrentState() == GameState.GAME_OVER) {
+                view.render(model);
+            } else {
+                stopGameOverUiAnimation();
+            }
+        });
+        gameOverUiTimer.start();
+    }
+
+    private void stopGameOverUiAnimation() {
+        if (gameOverUiTimer != null && gameOverUiTimer.isRunning()) {
+            gameOverUiTimer.stop();
+        }
+    }
 
 	public void pauseGame() {
 		if (model.getCurrentState() == GameState.PLAYING) {
@@ -313,6 +343,7 @@ public class GameController {
         if (model.getCurrentState() == GameState.GAME_OVER || model.getCurrentState() == GameState.PAUSED) {
             gameLoop.stop();
             if (countdownTimer != null) countdownTimer.stop();
+            stopGameOverUiAnimation();
             model.setCurrentState(GameState.MENU);
             view.render(model);
             view.requestFocusInWindow();

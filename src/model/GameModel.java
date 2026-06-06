@@ -10,6 +10,10 @@ public class GameModel {
     private GameMode currentMode = GameMode.CLASSIC;
     private Wall wall;
 
+    // DEV04 - UC4.2 End Game / ERD SU_KIEN_GAME_OVER:
+    // Lưu nguyên nhân kết thúc ván để GamePanel hiển thị trên overlay Game Over.
+    private String gameOverReason = "";
+
     // UI-01: Lưu độ khó mà người chơi chọn ở Main Menu.
     // Giá trị này được GameController dùng để tính tốc độ Timer khi bắt đầu game.
     private DifficultyLevel difficultyLevel = DifficultyLevel.NORMAL;
@@ -22,6 +26,11 @@ public class GameModel {
         this.wall = new Wall();
     }
 
+    /**
+     * DEV04 - UC4.4 Restart Game:
+     * Reset dữ liệu phiên chơi mới gồm rắn, vật cản, mồi, điểm hiện tại và lý do Game Over.
+     * High score không bị reset vì thuộc dữ liệu thành tích lâu dài của UC4.3.
+     */
     public void prepareNewGame() {
         snake.reset(20, 15);
 
@@ -42,8 +51,24 @@ public class GameModel {
             food.spawn(snake.getBody());
         }
 
+        // DEV04 - UC4.4 bước 5: điểm hiện tại được đưa về 0,
+        // nhưng highScore vẫn được đọc lại từ highscore.txt trong ScoreManager.
         scoreManager.resetScore();
+        this.gameOverReason = "";
         this.currentState = GameState.PLAYING;
+    }
+
+    public String getGameOverReason() {
+        return gameOverReason;
+    }
+
+    // DEV04 - UC4.2: Chuẩn hóa lý do thua để View không bị rỗng/null khi render Game Over.
+    public void setGameOverReason(String gameOverReason) {
+        if (gameOverReason == null || gameOverReason.isBlank()) {
+            this.gameOverReason = "Không xác định";
+        } else {
+            this.gameOverReason = gameOverReason;
+        }
     }
 
     public Wall getWall() {

@@ -15,6 +15,8 @@ public class CollisionManager {
         if (head == null || foodPos == null) return false;
         return head.equals(foodPos);
     }
+    // DEV04 - UC4.1 Check Collision:
+    // Kiểm tra đầu rắn có vượt ra khỏi biên trái/phải/trên/dưới của bàn chơi hay không.
     public boolean checkWallCollision(Point head) {
         if (head == null) return false;
 
@@ -23,6 +25,8 @@ public class CollisionManager {
                 || head.y >= boardRows;
     }
 
+    // DEV04 - UC4.1 Check Collision:
+    // Kiểm tra đầu rắn có trùng với một phần thân rắn hay không.
     public boolean checkSelfCollision(List<Point> body) {
         if (body == null || body.size() < 2) return false;
 
@@ -35,6 +39,8 @@ public class CollisionManager {
         return false;
     }
     
+    // DEV04 mở rộng UC4.1:
+    // Bổ sung kiểm tra vật cản để lý do Game Over hiển thị rõ hơn khi chơi Survival.
     public boolean checkObstacleCollision(Point head, List<Point> walls) {
         if (head == null || walls == null) {
             return false;
@@ -43,6 +49,8 @@ public class CollisionManager {
         return walls.contains(head);
     }
 
+    // DEV04 - UC4.1 Main Flow bước 3-5:
+    // Tổng hợp kết quả va chạm tường, thân và vật cản để GameController quyết định UC4.2 End Game.
     public boolean checkCollision(Snake snake, List<Point> walls) {
         if (snake == null || snake.getBody() == null || snake.getBody().isEmpty()) {
             return false;

@@ -6,15 +6,26 @@ public class ScoreManager {
     // [UI-03] Các thuộc tính mở rộng cho tính năng Combo Streak
     private int comboCount = 0;
     private long lastEatTime = 0;
+    // DEV04 - UC4.3 Save High Score:
+    // Cờ này cho GamePanel biết ván hiện tại có phá kỷ lục để hiển thị badge KỶ LỤC MỚI.
+    private boolean newHighScoreAchieved = false;
 
     public ScoreManager() {
         this.currentScore = 0;
         this.highScore = HighScoreRepository.loadHighScore();
     }
 
+    /**
+     * DEV04 - UC4.4 Restart Game:
+     * Reset điểm hiện tại cho ván mới nhưng không xóa thành tích.
+     * highScore được nạp lại từ file để bảo đảm Restart không làm mất điểm cao.
+     */
     public void resetScore() {
         this.currentScore = 0;
         this.highScore = HighScoreRepository.loadHighScore();
+        this.comboCount = 0;
+        this.lastEatTime = 0;
+        this.newHighScoreAchieved = false;
     }
 
     // Hàm mặc định cũ: Giữ lại để đảm bảo các tính năng cũ không bị lỗi biên dịch
@@ -25,21 +36,37 @@ public class ScoreManager {
     // [UI-03] NÂNG CẤP: Nạp chồng hàm addScore để nhận số điểm linh hoạt (10 hoặc 30)
     public void addScore(int points) {
         currentScore += points;
+        updateHighScoreIfNeeded();
+    }
 
-        // Cơ chế check kỷ lục và ghi file ngầm (Background Thread) giữ nguyên cực kỳ mượt mà
+    /**
+     * DEV04 - UC4.3 Save High Score:
+     * So sánh currentScore với highScore và ghi highscore.txt khi người chơi phá kỷ lục.
+     * Việc ghi file chạy ở background thread để không block UI/Game Loop.
+     */
+    private void updateHighScoreIfNeeded() {
         if (currentScore > highScore) {
             highScore = currentScore;
+            newHighScoreAchieved = true;
 
             // [Nâng cấp UC05] - Nhat Anh
             // Đẩy tiến trình ghi I/O ổ cứng sang luồng ngầm (Background Thread)
             // Giúp Game Loop (Timer) không bị chờ, chống hiện tượng khựng (lag) game.
-            final int scoreToSave = highScore; // Tạo bản sao final để truyền vào Thread cho an toàn
+            final int scoreToSave = highScore;
 
-            new Thread(() -> {
-                HighScoreRepository.saveHighScore(scoreToSave);
-            }).start();
+            new Thread(() -> HighScoreRepository.saveHighScore(scoreToSave), "HighScore-Save-Thread").start();
         }
     }
+
+    /**
+     * DEV04 - UC4.3 Save High Score tại thời điểm Game Over:
+     * GameController gọi hàm này trong handleGameOver() để chốt điểm cuối ván
+     * theo đúng Sequence Diagram, kể cả khi điểm đã được cập nhật trong lúc ăn mồi.
+     */
+    public void finalizeHighScoreOnGameOver() {
+        updateHighScoreIfNeeded();
+    }
+
     public void processEatEvent(boolean isSpecialFood) {
         long currentTime = System.currentTimeMillis();
         int basePoints = isSpecialFood ? 30 : 10;
@@ -65,10 +92,7 @@ public class ScoreManager {
         int finalPoints = (int) (basePoints * multiplier);
         currentScore += finalPoints;
 
-        if (currentScore > highScore) {
-            highScore = currentScore;
-            // HighScoreRepository.saveHighScore(highScore); // Lưu vật lý nếu có
-        }
+        updateHighScoreIfNeeded();
     }
     public void resetCombo() {
         this.comboCount = 0;
@@ -81,5 +105,13 @@ public class ScoreManager {
 
     public int getHighScore() {
         return highScore;
+    }
+
+    public boolean isNewHighScoreAchieved() {
+        return newHighScoreAchieved;
+    }
+
+    public int getComboCount() {
+        return comboCount;
     }
 }

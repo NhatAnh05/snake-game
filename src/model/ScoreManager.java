@@ -3,97 +3,141 @@ package model;
 public class ScoreManager {
     private int currentScore;
     private int highScore;
-    // [UI-03] Các thuộc tính mở rộng cho tính năng Combo Streak
+
+    // UI-03:
+    // Thuộc tính mở rộng cho Combo Streak.
     private int comboCount = 0;
     private long lastEatTime = 0;
+
     // DEV04 - UC4.3 Save High Score:
-    // Cờ này cho GamePanel biết ván hiện tại có phá kỷ lục để hiển thị badge KỶ LỤC MỚI.
+    // Cho GamePanel biết ván hiện tại có phá kỷ lục không.
     private boolean newHighScoreAchieved = false;
+
+    // DEV04 - UC04 Premium Summary:
+    // Thống kê phiên chơi dùng để hiển thị ở màn hình Game Over.
+    private int foodEaten = 0;
+    private int specialFoodEaten = 0;
+    private int maxComboCount = 0;
+    private int lastPointsEarned = 0;
+    private int highScoreBeforeSession = 0;
 
     public ScoreManager() {
         this.currentScore = 0;
         this.highScore = HighScoreRepository.loadHighScore();
+        this.highScoreBeforeSession = this.highScore;
     }
 
     /**
      * DEV04 - UC4.4 Restart Game:
-     * Reset điểm hiện tại cho ván mới nhưng không xóa thành tích.
-     * highScore được nạp lại từ file để bảo đảm Restart không làm mất điểm cao.
+     * Reset điểm hiện tại và thống kê phiên chơi mới.
+     * Không xóa high score vì high score là dữ liệu thành tích lâu dài của UC4.3.
      */
     public void resetScore() {
         this.currentScore = 0;
         this.highScore = HighScoreRepository.loadHighScore();
+        this.highScoreBeforeSession = this.highScore;
+
         this.comboCount = 0;
         this.lastEatTime = 0;
         this.newHighScoreAchieved = false;
+
+        this.foodEaten = 0;
+        this.specialFoodEaten = 0;
+        this.maxComboCount = 0;
+        this.lastPointsEarned = 0;
     }
 
-    // Hàm mặc định cũ: Giữ lại để đảm bảo các tính năng cũ không bị lỗi biên dịch
+    /**
+     * Hàm mặc định cũ:
+     * Giữ lại để các phần code cũ gọi addScore() không bị lỗi.
+     */
     public void addScore() {
-        addScore(10); // Tự động gọi hàm có tham số bên dưới với giá trị mặc định là 10
+        addScore(10);
     }
 
-    // [UI-03] NÂNG CẤP: Nạp chồng hàm addScore để nhận số điểm linh hoạt (10 hoặc 30)
+    /**
+     * UI-03 + DEV04:
+     * Cộng điểm linh hoạt và kiểm tra high score.
+     */
     public void addScore(int points) {
         currentScore += points;
+        lastPointsEarned = points;
         updateHighScoreIfNeeded();
     }
 
     /**
      * DEV04 - UC4.3 Save High Score:
-     * So sánh currentScore với highScore và ghi highscore.txt khi người chơi phá kỷ lục.
-     * Việc ghi file chạy ở background thread để không block UI/Game Loop.
+     * So sánh currentScore với highScore.
+     * Nếu điểm hiện tại cao hơn điểm cũ thì cập nhật highScore và lưu xuống highscore.txt.
      */
     private void updateHighScoreIfNeeded() {
         if (currentScore > highScore) {
             highScore = currentScore;
             newHighScoreAchieved = true;
 
-            // [Nâng cấp UC05] - Nhat Anh
-            // Đẩy tiến trình ghi I/O ổ cứng sang luồng ngầm (Background Thread)
-            // Giúp Game Loop (Timer) không bị chờ, chống hiện tượng khựng (lag) game.
+            // DEV04 - Tối ưu lưu điểm cao:
+            // Chốt snapshot trước khi ghi file nền để Restart không làm sai dữ liệu cần lưu.
             final int scoreToSave = highScore;
 
-            new Thread(() -> HighScoreRepository.saveHighScore(scoreToSave), "HighScore-Save-Thread").start();
+            new Thread(() -> {
+                HighScoreRepository.saveHighScore(scoreToSave);
+            }, "HighScore-Save-Thread").start();
         }
     }
 
     /**
-     * DEV04 - UC4.3 Save High Score tại thời điểm Game Over:
-     * GameController gọi hàm này trong handleGameOver() để chốt điểm cuối ván
-     * theo đúng Sequence Diagram, kể cả khi điểm đã được cập nhật trong lúc ăn mồi.
+     * DEV04 - UC4.3 Save High Score:
+     * GameController gọi hàm này tại thời điểm Game Over để chốt điểm cuối ván
+     * đúng với Sequence Diagram.
      */
     public void finalizeHighScoreOnGameOver() {
         updateHighScoreIfNeeded();
     }
 
+    /**
+     * UC03 kết hợp DEV04:
+     * Khi rắn ăn mồi, hệ thống vừa cộng điểm vừa ghi nhận thống kê
+     * để màn hình Game Over có bảng tổng kết ván chơi.
+     */
     public void processEatEvent(boolean isSpecialFood) {
         long currentTime = System.currentTimeMillis();
         int basePoints = isSpecialFood ? 30 : 10;
 
-        // Kiểm tra xem lần ăn này có cách lần ăn trước dưới 5 giây (5000ms) không
         if (currentTime - lastEatTime <= 5000 && lastEatTime != 0) {
-            comboCount++; // Tăng chuỗi combo
+            comboCount++;
         } else {
-            comboCount = 1; // Quá thời gian hoặc lần đầu ăn, thiết lập lại combo về 1
+            comboCount = 1;
         }
 
-        lastEatTime = currentTime; // Cập nhật mốc thời gian ăn mới nhất
+        lastEatTime = currentTime;
 
-        // Tính toán hệ số nhân điểm dựa trên số chuỗi ăn được
+        maxComboCount = Math.max(maxComboCount, comboCount);
+
+        foodEaten++;
+
+        if (isSpecialFood) {
+            specialFoodEaten++;
+        }
+
         double multiplier = 1.0;
+
         if (comboCount >= 4) {
-            multiplier = 2.0; // Combo từ 4 phát trở lên: x2.0 điểm
+            multiplier = 2.0;
         } else if (comboCount >= 2) {
-            multiplier = 1.5; // Combo từ 2 đến 3 phát: x1.5 điểm
+            multiplier = 1.5;
         }
 
-        // Tính tổng điểm nhận được sau khi nhân hệ số
         int finalPoints = (int) (basePoints * multiplier);
+        lastPointsEarned = finalPoints;
         currentScore += finalPoints;
 
         updateHighScoreIfNeeded();
     }
+
+    /**
+     * DEV04:
+     * Khi Game Over thì combo bị ngắt.
+     */
     public void resetCombo() {
         this.comboCount = 0;
         this.lastEatTime = 0;
@@ -113,5 +157,34 @@ public class ScoreManager {
 
     public int getComboCount() {
         return comboCount;
+    }
+
+    public int getFoodEaten() {
+        return foodEaten;
+    }
+
+    public int getSpecialFoodEaten() {
+        return specialFoodEaten;
+    }
+
+    public int getMaxComboCount() {
+        return maxComboCount;
+    }
+
+    public int getLastPointsEarned() {
+        return lastPointsEarned;
+    }
+
+    public int getHighScoreBeforeSession() {
+        return highScoreBeforeSession;
+    }
+
+    /**
+     * DEV04 - UC4.3:
+     * Trả về số điểm vượt kỷ lục trong phiên chơi hiện tại.
+     * Ví dụ: highScore cũ = 100, highScore mới = 130 => delta = 30.
+     */
+    public int getHighScoreDelta() {
+        return Math.max(0, highScore - highScoreBeforeSession);
     }
 }

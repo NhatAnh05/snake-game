@@ -93,7 +93,11 @@ public class GameController {
             }
             stopGameOverUiAnimation();
 
-            model.prepareNewGame();
+            if (model.getCurrentState() == GameState.MENU) {
+                model.initializeSecureNewGame();
+            } else {
+                model.prepareNewGame();
+            }
             model.setCurrentState(GameState.PLAYING);
             view.render(model);
 

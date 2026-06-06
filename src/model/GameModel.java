@@ -149,4 +149,26 @@ public class GameModel {
             this.difficultyLevel = difficultyLevel;
         }
     }
+    //UI01
+    public void initializeSecureNewGame() {
+        this.prepareNewGame();
+
+        if (this.snake != null) {
+            this.snake.setDirection(Direction.RIGHT);
+        }
+
+        if (this.scoreManager != null) {
+            this.scoreManager.resetCombo();
+        }
+
+        if (this.food != null && this.wall != null && this.snake != null) {
+            int maxAttempts = 100;
+            int attempts = 0;
+
+            while (this.wall.contains(this.food.getPosition()) && attempts < maxAttempts) {
+                this.food.spawn(this.snake.getBody());
+                attempts++;
+            }
+        }
+    }
 }

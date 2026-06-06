@@ -1451,89 +1451,88 @@ public class GamePanel extends JPanel {
 		this.inputHandler = inputHandler;
 	}
 
-	// UI-01: Vẽ mũi tên chỉ hướng đi ngay phía trước để bổ trợ cho người chơi dễ nhìn hướng đi của rắn.
-	private void drawSnakeHeadDirection(Graphics2D g2d) {
-		if (currentModel == null || currentModel.getCurrentState() != GameState.PLAYING) return;
-		if (currentModel.getSnake() == null || currentModel.getSnake().getBody() == null) return;
+    // UI-01: Vẽ mũi tên chỉ hướng đi ngay phía trước để bổ trợ cho người chơi dễ nhìn hướng đi của rắn.
+    private void drawSnakeHeadDirection(Graphics2D g2d) {
+        if (currentModel == null || currentModel.getCurrentState() != GameState.PLAYING) return;
+        if (currentModel.getSnake() == null || currentModel.getSnake().getBody() == null) return;
 
-		java.util.List<Point> body = currentModel.getSnake().getBody();
-		if (body.isEmpty()) return;
+        java.util.List<Point> body = currentModel.getSnake().getBody();
+        if (body.isEmpty()) return;
 
-		model.Direction currentDir = currentModel.getSnake().getDirection();
-		if (currentDir == null) return;
+        model.Direction currentDir = currentModel.getSnake().getDirection();
+        if (currentDir == null) return;
 
-		Point head = body.get(0);
-		int headPixelX = head.x * CELL_SIZE;
-		int headPixelY = head.y * CELL_SIZE;
-		int centerX = headPixelX + (CELL_SIZE / 2);
-		int centerY = headPixelY + (CELL_SIZE / 2);
+        Point head = body.get(0);
+        int headPixelX = head.x * CELL_SIZE;
+        int headPixelY = head.y * CELL_SIZE;
+        int centerX = headPixelX + (CELL_SIZE / 2);
+        int centerY = headPixelY + (CELL_SIZE / 2);
 
-		// [UI-03] Sửa lỗi dịch chuyển tọa độ: Thay đổi offset nhảy từ nguyên 1 ô (CELL_SIZE) thành 6 pixel để neo mũi tên luôn nằm gọn bên mép trong đầu rắn.
-		int offset = 6;
-		switch (currentDir) {
-			case UP -> centerY -= offset;
-			case DOWN -> centerY+= offset;
-			case LEFT -> centerX -= offset;
-			case RIGHT -> centerX += offset;
-		}
+        int offset = (CELL_SIZE / 2) + 22;
+        switch (currentDir) {
+            case UP -> centerY -= offset;
+            case DOWN -> centerY+= offset;
+            case LEFT -> centerX -= offset;
+            case RIGHT -> centerX += offset;
+        }
 
-		Stroke oldStroke = g2d.getStroke();
-		Color arrowColor = new Color(255, 15, 60);
+        Stroke oldStroke = g2d.getStroke();
+        Color arrowColor = new Color(255, 15, 60);
 
-		int headLength = 5;
-		int headWidth = 5;
-		int stemLength = 4;
-		int stemWidth = 2;
+        int headLength = 8;
+        int headWidth = 7;
+        int stemLength = 14;
+        int stemWidth = 3;
 
-		Polygon arrow = new Polygon();
-		switch (currentDir) {
-			case UP -> {
-				arrow.addPoint(centerX, centerY - headLength);
-				arrow.addPoint(centerX + headWidth, centerY);
-				arrow.addPoint(centerX + stemWidth, centerY);
-				arrow.addPoint(centerX + stemWidth, centerY + stemLength);
-				arrow.addPoint(centerX - stemWidth, centerY + stemLength);
-				arrow.addPoint(centerX - stemWidth, centerY);
-				arrow.addPoint(centerX - headWidth, centerY);
-			}
-			case DOWN -> {
-				arrow.addPoint(centerX, centerY + headLength);
-				arrow.addPoint(centerX + headWidth, centerY);
-				arrow.addPoint(centerX + stemWidth, centerY);
-				arrow.addPoint(centerX + stemWidth, centerY - stemLength);
-				arrow.addPoint(centerX - stemWidth, centerY - stemLength);
-				arrow.addPoint(centerX - stemWidth, centerY);
-				arrow.addPoint(centerX - headWidth, centerY);
-			}
-			case LEFT -> {
-				arrow.addPoint(centerX - headLength, centerY);
-				arrow.addPoint(centerX, centerY - headWidth);
-				arrow.addPoint(centerX, centerY - stemWidth);
-				arrow.addPoint(centerX + stemLength, centerY - stemWidth);
-				arrow.addPoint(centerX + stemLength, centerY + stemWidth);
-				arrow.addPoint(centerX, centerY + stemWidth);
-				arrow.addPoint(centerX, centerY + headWidth);
-			}
-			case RIGHT -> {
-				arrow.addPoint(centerX + headLength, centerY);
-				arrow.addPoint(centerX, centerY - headWidth);
-				arrow.addPoint(centerX, centerY - stemWidth);
-				arrow.addPoint(centerX - stemLength, centerY - stemWidth);
-				arrow.addPoint(centerX - stemLength, centerY + stemWidth);
-				arrow.addPoint(centerX, centerY + stemWidth);
-				arrow.addPoint(centerX, centerY + headWidth);
-			}
-		}
+        Polygon arrow = new Polygon();
+        switch (currentDir) {
+            case UP -> {
+                arrow.addPoint(centerX, centerY - headLength);
+                arrow.addPoint(centerX + headWidth, centerY);
+                arrow.addPoint(centerX + stemWidth, centerY);
+                arrow.addPoint(centerX + stemWidth, centerY + stemLength);
+                arrow.addPoint(centerX - stemWidth, centerY + stemLength);
+                arrow.addPoint(centerX - stemWidth, centerY);
+                arrow.addPoint(centerX - headWidth, centerY);
+            }
+            case DOWN -> {
+                arrow.addPoint(centerX, centerY + headLength);
+                arrow.addPoint(centerX + headWidth, centerY);
+                arrow.addPoint(centerX + stemWidth, centerY);
+                arrow.addPoint(centerX + stemWidth, centerY - stemLength);
+                arrow.addPoint(centerX - stemWidth, centerY - stemLength);
+                arrow.addPoint(centerX - stemWidth, centerY);
+                arrow.addPoint(centerX - headWidth, centerY);
+            }
+            case LEFT -> {
+                arrow.addPoint(centerX - headLength, centerY);
+                arrow.addPoint(centerX, centerY - headWidth);
+                arrow.addPoint(centerX, centerY - stemWidth);
+                arrow.addPoint(centerX + stemLength, centerY - stemWidth);
+                arrow.addPoint(centerX + stemLength, centerY + stemWidth);
+                arrow.addPoint(centerX, centerY + stemWidth);
+                arrow.addPoint(centerX, centerY + headWidth);
+            }
+            case RIGHT -> {
+                arrow.addPoint(centerX + headLength, centerY);
+                arrow.addPoint(centerX, centerY - headWidth);
+                arrow.addPoint(centerX, centerY - stemWidth);
+                arrow.addPoint(centerX - stemLength, centerY - stemWidth);
+                arrow.addPoint(centerX - stemLength, centerY + stemWidth);
+                arrow.addPoint(centerX, centerY + stemWidth);
+                arrow.addPoint(centerX, centerY + headWidth);
+            }
+        }
 
-		g2d.setColor(arrowColor);
-		g2d.fillPolygon(arrow);
+        g2d.setColor(arrowColor);
+        g2d.fillPolygon(arrow);
 
-		g2d.setColor(new Color(255, 255, 255, 220));
-		g2d.setStroke(new BasicStroke(1.2f));
-		g2d.drawPolygon(arrow);
+        g2d.setColor(new Color(255, 255, 255, 220));
+        g2d.setStroke(new BasicStroke(1.2f));
+        g2d.drawPolygon(arrow);
 
-		g2d.setStroke(oldStroke);
-	}
+        g2d.setStroke(oldStroke);
+    }
 
 	// CHECKLIST: Hàm render hình ảnh/màu sắc riêng biệt cho Food tập trung dựa trên Theme hiện tại
 	// [UI-03] Chức năng hiển thị: Kích hoạt toàn diện hàm vẽ mồi drawFood() tách biệt, tích hợp logic xử lý phân cấp theme (Neon/Classic) và mồi đặc biệt (Special Pulse) giúp gom cụm mã nguồn tối ưu.

@@ -64,6 +64,10 @@ public class GamePanel extends JPanel {
 	private String modeFeedbackText = null;
 	private long modeFeedbackUntil = 0L;
 
+	// [DEV02 - UC02] - LÊ TUẤN ANH
+	// GamePanel giữ tham chiếu InputHandler để chuyển tiếp phím điều hướng
+	// từ Key Bindings về đúng luồng Control Snake khi game đang PLAYING.
+	// Không xử lý trực tiếp logic đổi hướng tại View để tránh phá vỡ MVC.
 	private InputHandler inputHandler;
 
 	public GamePanel() {
@@ -109,6 +113,10 @@ public class GamePanel extends JPanel {
 		ActionMap actionMap = getActionMap();
 
 		// Đăng ký các phím điều khiển hệ thống bằng mũi tên và Enter
+		// [DEV02 - UC02] - LÊ TUẤN ANH
+		// Giữ lại các Key Bindings có sẵn để bảo đảm GamePanel vẫn nhận được phím
+		// khi JPanel đang focus. Các phím điều hướng sẽ được chuyển tiếp về InputHandler
+		// thay vì cập nhật hướng trực tiếp trong View.
 		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, 0), "ui01-left");
 		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0), "ui01-up");
 		inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, 0), "ui01-right");
@@ -124,6 +132,9 @@ public class GamePanel extends JPanel {
 		inputMap.put(KeyStroke.getKeyStroke('r'), "ui01-restart");
 		inputMap.put(KeyStroke.getKeyStroke('R'), "ui01-restart");
 
+		// [DEV02 - UC02] - LÊ TUẤN ANH
+		// Bổ sung/giữ ánh xạ W/A/S/D ở tầng View để khớp với Use Case Control Snake:
+		// Player có thể điều khiển rắn bằng cả phím mũi tên và W/A/S/D.
 		inputMap.put(KeyStroke.getKeyStroke('w'), "ui01-up");
 		inputMap.put(KeyStroke.getKeyStroke('W'), "ui01-up");
 		inputMap.put(KeyStroke.getKeyStroke('ư'), "ui01-up"); // Chặn Telex gõ chữ W ra chữ Ư
@@ -138,6 +149,10 @@ public class GamePanel extends JPanel {
 		inputMap.put(KeyStroke.getKeyStroke('d'), "ui01-right");
 		inputMap.put(KeyStroke.getKeyStroke('D'), "ui01-right");
 
+		// [DEV02 - UC02] - LÊ TUẤN ANH
+		// Khi đang ở MENU/SETTINGS, phím trái dùng cho điều hướng UI.
+		// Khi đang chơi game, phím trái được chuyển tiếp sang InputHandler
+		// để GameController kiểm tra GameState và chống quay ngược 180 độ.
 		actionMap.put("ui01-left", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -150,6 +165,9 @@ public class GamePanel extends JPanel {
 			}
 		});
 
+		// [DEV02 - UC02] - LÊ TUẤN ANH
+		// Chuyển tiếp phím lên/W về InputHandler trong gameplay,
+		// giữ đúng trách nhiệm View chỉ nhận input và không tự đổi hướng rắn.
 		actionMap.put("ui01-up", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -162,6 +180,8 @@ public class GamePanel extends JPanel {
 			}
 		});
 
+		// [DEV02 - UC02] - LÊ TUẤN ANH
+		// Chuyển tiếp phím phải/D về InputHandler để thống nhất luồng Control Snake.
 		actionMap.put("ui01-right", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -174,6 +194,8 @@ public class GamePanel extends JPanel {
 			}
 		});
 
+		// [DEV02 - UC02] - LÊ TUẤN ANH
+		// Chuyển tiếp phím xuống/S về InputHandler để controller xử lý hợp lệ hướng.
 		actionMap.put("ui01-down", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -871,33 +893,33 @@ public class GamePanel extends JPanel {
 				g2d.drawString("BONUS TIME: " + (timeLeft / 1000 + 1) + "s", x + maxWidth + 12, y + 9);
 			}
 		}
-        if (inputHandler != null && inputHandler.getController() != null) {
-            var controller = inputHandler.getController();
+		if (inputHandler != null && inputHandler.getController() != null) {
+			var controller = inputHandler.getController();
 
-            if (controller.isCountingDown()) {
-                int countdown = controller.getCountdownValue();
-                String text = countdown == 0 ? "GO!" : String.valueOf(countdown);
-
-
-                g2d.setFont(new Font("Impact", Font.BOLD, 90));
-                FontMetrics fm = g2d.getFontMetrics();
+			if (controller.isCountingDown()) {
+				int countdown = controller.getCountdownValue();
+				String text = countdown == 0 ? "GO!" : String.valueOf(countdown);
 
 
-                int textX = (GAME_AREA_WIDTH - fm.stringWidth(text)) / 2;
-                int textY = (GAME_AREA_HEIGHT - fm.getHeight()) / 2 + fm.getAscent();
-
-                g2d.setColor(new Color(0, 0, 0, 100));
-                g2d.fillRect(0, 0, GAME_AREA_WIDTH, GAME_AREA_HEIGHT);
+				g2d.setFont(new Font("Impact", Font.BOLD, 90));
+				FontMetrics fm = g2d.getFontMetrics();
 
 
-                g2d.setColor(new Color(255, 50, 100, 150));
-                g2d.drawString(text, textX + 4, textY + 4);
+				int textX = (GAME_AREA_WIDTH - fm.stringWidth(text)) / 2;
+				int textY = (GAME_AREA_HEIGHT - fm.getHeight()) / 2 + fm.getAscent();
+
+				g2d.setColor(new Color(0, 0, 0, 100));
+				g2d.fillRect(0, 0, GAME_AREA_WIDTH, GAME_AREA_HEIGHT);
 
 
-                g2d.setColor(new Color(255, 230, 50));
-                g2d.drawString(text, textX, textY);
-            }
-        }
+				g2d.setColor(new Color(255, 50, 100, 150));
+				g2d.drawString(text, textX + 4, textY + 4);
+
+
+				g2d.setColor(new Color(255, 230, 50));
+				g2d.drawString(text, textX, textY);
+			}
+		}
 		if (currentModel.getCurrentState() == GameState.PAUSED) {
 			drawPauseOverlay(g2d);
 		} else if (currentModel.getCurrentState() == GameState.GAME_OVER) {
@@ -1010,6 +1032,9 @@ public class GamePanel extends JPanel {
 		int clusterX = x + (w - clusterWidth) / 2;
 		int clusterY = controlY + 40;
 
+		// [DEV02 - UC02] - LÊ TUẤN ANH
+		// Hiển thị cụm phím điều khiển trong sidebar để người chơi nhận biết
+		// các input hợp lệ của chức năng Control Snake.
 		drawKeyBox(g2d, "↑", clusterX + keySize + gap, clusterY, keySize, keySize);
 		drawKeyBox(g2d, "←", clusterX, clusterY + keySize + gap, keySize, keySize);
 		drawKeyBox(g2d, "↓", clusterX + keySize + gap, clusterY + keySize + gap, keySize, keySize);
@@ -1447,92 +1472,96 @@ public class GamePanel extends JPanel {
 		g2d.drawString(modeFeedbackText, x + padX, y + 22);
 	}
 
+	// [DEV02 - UC02] - LÊ TUẤN ANH
+	// GameController gọi hàm này để đồng bộ InputHandler vào GamePanel.
+	// Nhờ đó Key Bindings của View có thể chuyển tiếp phím về đúng controller,
+	// tránh việc GamePanel tự xử lý logic đổi hướng.
 	public void setInputHandler(InputHandler inputHandler) {
 		this.inputHandler = inputHandler;
 	}
 
-    // UI-01: Vẽ mũi tên chỉ hướng đi ngay phía trước để bổ trợ cho người chơi dễ nhìn hướng đi của rắn.
-    private void drawSnakeHeadDirection(Graphics2D g2d) {
-        if (currentModel == null || currentModel.getCurrentState() != GameState.PLAYING) return;
-        if (currentModel.getSnake() == null || currentModel.getSnake().getBody() == null) return;
+	// UI-01: Vẽ mũi tên chỉ hướng đi ngay phía trước để bổ trợ cho người chơi dễ nhìn hướng đi của rắn.
+	private void drawSnakeHeadDirection(Graphics2D g2d) {
+		if (currentModel == null || currentModel.getCurrentState() != GameState.PLAYING) return;
+		if (currentModel.getSnake() == null || currentModel.getSnake().getBody() == null) return;
 
-        java.util.List<Point> body = currentModel.getSnake().getBody();
-        if (body.isEmpty()) return;
+		java.util.List<Point> body = currentModel.getSnake().getBody();
+		if (body.isEmpty()) return;
 
-        model.Direction currentDir = currentModel.getSnake().getDirection();
-        if (currentDir == null) return;
+		model.Direction currentDir = currentModel.getSnake().getDirection();
+		if (currentDir == null) return;
 
-        Point head = body.get(0);
-        int headPixelX = head.x * CELL_SIZE;
-        int headPixelY = head.y * CELL_SIZE;
-        int centerX = headPixelX + (CELL_SIZE / 2);
-        int centerY = headPixelY + (CELL_SIZE / 2);
+		Point head = body.get(0);
+		int headPixelX = head.x * CELL_SIZE;
+		int headPixelY = head.y * CELL_SIZE;
+		int centerX = headPixelX + (CELL_SIZE / 2);
+		int centerY = headPixelY + (CELL_SIZE / 2);
 
-        int offset = (CELL_SIZE / 2) + 22;
-        switch (currentDir) {
-            case UP -> centerY -= offset;
-            case DOWN -> centerY+= offset;
-            case LEFT -> centerX -= offset;
-            case RIGHT -> centerX += offset;
-        }
+		int offset = (CELL_SIZE / 2) + 22;
+		switch (currentDir) {
+			case UP -> centerY -= offset;
+			case DOWN -> centerY+= offset;
+			case LEFT -> centerX -= offset;
+			case RIGHT -> centerX += offset;
+		}
 
-        Stroke oldStroke = g2d.getStroke();
-        Color arrowColor = new Color(255, 15, 60);
+		Stroke oldStroke = g2d.getStroke();
+		Color arrowColor = new Color(255, 15, 60);
 
-        int headLength = 8;
-        int headWidth = 7;
-        int stemLength = 14;
-        int stemWidth = 3;
+		int headLength = 8;
+		int headWidth = 7;
+		int stemLength = 14;
+		int stemWidth = 3;
 
-        Polygon arrow = new Polygon();
-        switch (currentDir) {
-            case UP -> {
-                arrow.addPoint(centerX, centerY - headLength);
-                arrow.addPoint(centerX + headWidth, centerY);
-                arrow.addPoint(centerX + stemWidth, centerY);
-                arrow.addPoint(centerX + stemWidth, centerY + stemLength);
-                arrow.addPoint(centerX - stemWidth, centerY + stemLength);
-                arrow.addPoint(centerX - stemWidth, centerY);
-                arrow.addPoint(centerX - headWidth, centerY);
-            }
-            case DOWN -> {
-                arrow.addPoint(centerX, centerY + headLength);
-                arrow.addPoint(centerX + headWidth, centerY);
-                arrow.addPoint(centerX + stemWidth, centerY);
-                arrow.addPoint(centerX + stemWidth, centerY - stemLength);
-                arrow.addPoint(centerX - stemWidth, centerY - stemLength);
-                arrow.addPoint(centerX - stemWidth, centerY);
-                arrow.addPoint(centerX - headWidth, centerY);
-            }
-            case LEFT -> {
-                arrow.addPoint(centerX - headLength, centerY);
-                arrow.addPoint(centerX, centerY - headWidth);
-                arrow.addPoint(centerX, centerY - stemWidth);
-                arrow.addPoint(centerX + stemLength, centerY - stemWidth);
-                arrow.addPoint(centerX + stemLength, centerY + stemWidth);
-                arrow.addPoint(centerX, centerY + stemWidth);
-                arrow.addPoint(centerX, centerY + headWidth);
-            }
-            case RIGHT -> {
-                arrow.addPoint(centerX + headLength, centerY);
-                arrow.addPoint(centerX, centerY - headWidth);
-                arrow.addPoint(centerX, centerY - stemWidth);
-                arrow.addPoint(centerX - stemLength, centerY - stemWidth);
-                arrow.addPoint(centerX - stemLength, centerY + stemWidth);
-                arrow.addPoint(centerX, centerY + stemWidth);
-                arrow.addPoint(centerX, centerY + headWidth);
-            }
-        }
+		Polygon arrow = new Polygon();
+		switch (currentDir) {
+			case UP -> {
+				arrow.addPoint(centerX, centerY - headLength);
+				arrow.addPoint(centerX + headWidth, centerY);
+				arrow.addPoint(centerX + stemWidth, centerY);
+				arrow.addPoint(centerX + stemWidth, centerY + stemLength);
+				arrow.addPoint(centerX - stemWidth, centerY + stemLength);
+				arrow.addPoint(centerX - stemWidth, centerY);
+				arrow.addPoint(centerX - headWidth, centerY);
+			}
+			case DOWN -> {
+				arrow.addPoint(centerX, centerY + headLength);
+				arrow.addPoint(centerX + headWidth, centerY);
+				arrow.addPoint(centerX + stemWidth, centerY);
+				arrow.addPoint(centerX + stemWidth, centerY - stemLength);
+				arrow.addPoint(centerX - stemWidth, centerY - stemLength);
+				arrow.addPoint(centerX - stemWidth, centerY);
+				arrow.addPoint(centerX - headWidth, centerY);
+			}
+			case LEFT -> {
+				arrow.addPoint(centerX - headLength, centerY);
+				arrow.addPoint(centerX, centerY - headWidth);
+				arrow.addPoint(centerX, centerY - stemWidth);
+				arrow.addPoint(centerX + stemLength, centerY - stemWidth);
+				arrow.addPoint(centerX + stemLength, centerY + stemWidth);
+				arrow.addPoint(centerX, centerY + stemWidth);
+				arrow.addPoint(centerX, centerY + headWidth);
+			}
+			case RIGHT -> {
+				arrow.addPoint(centerX + headLength, centerY);
+				arrow.addPoint(centerX, centerY - headWidth);
+				arrow.addPoint(centerX, centerY - stemWidth);
+				arrow.addPoint(centerX - stemLength, centerY - stemWidth);
+				arrow.addPoint(centerX - stemLength, centerY + stemWidth);
+				arrow.addPoint(centerX, centerY + stemWidth);
+				arrow.addPoint(centerX, centerY + headWidth);
+			}
+		}
 
-        g2d.setColor(arrowColor);
-        g2d.fillPolygon(arrow);
+		g2d.setColor(arrowColor);
+		g2d.fillPolygon(arrow);
 
-        g2d.setColor(new Color(255, 255, 255, 220));
-        g2d.setStroke(new BasicStroke(1.2f));
-        g2d.drawPolygon(arrow);
+		g2d.setColor(new Color(255, 255, 255, 220));
+		g2d.setStroke(new BasicStroke(1.2f));
+		g2d.drawPolygon(arrow);
 
-        g2d.setStroke(oldStroke);
-    }
+		g2d.setStroke(oldStroke);
+	}
 
 	// CHECKLIST: Hàm render hình ảnh/màu sắc riêng biệt cho Food tập trung dựa trên Theme hiện tại
 	// [UI-03] Chức năng hiển thị: Kích hoạt toàn diện hàm vẽ mồi drawFood() tách biệt, tích hợp logic xử lý phân cấp theme (Neon/Classic) và mồi đặc biệt (Special Pulse) giúp gom cụm mã nguồn tối ưu.

@@ -70,6 +70,16 @@ public class GamePanel extends JPanel {
 	// Không xử lý trực tiếp logic đổi hướng tại View để tránh phá vỡ MVC.
 	private InputHandler inputHandler;
 
+	// DEV04 - UC4.4 Restart Game:
+	// Lưu trạng thái hover của các nút trên màn hình Game Over để nâng cấp UX.
+	private enum GameOverAction {
+		NONE,
+		RESTART,
+		MENU
+	}
+
+	private GameOverAction hoveredGameOverAction = GameOverAction.NONE;
+
 	public GamePanel() {
 		setPreferredSize(new Dimension(PANEL_WIDTH, PANEL_HEIGHT));
 		setDoubleBuffered(true);
@@ -435,6 +445,50 @@ public class GamePanel extends JPanel {
 				}
 			}
 		});
+
+		// DEV04 - UC4.4 Restart Game:
+		// Bắt hover chuột trên nút CHƠI LẠI / MENU CHÍNH để giao diện Game Over hiện đại hơn.
+		addMouseMotionListener(new MouseMotionAdapter() {
+			@Override
+			public void mouseMoved(MouseEvent e) {
+				updateGameOverHover(e.getX(), e.getY());
+			}
+		});
+
+		addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseExited(MouseEvent e) {
+				if (hoveredGameOverAction != GameOverAction.NONE) {
+					hoveredGameOverAction = GameOverAction.NONE;
+					setCursor(Cursor.getDefaultCursor());
+					repaint();
+				}
+			}
+		});
+	}
+
+	private void updateGameOverHover(int mouseX, int mouseY) {
+		if (currentModel == null || currentModel.getCurrentState() != GameState.GAME_OVER) {
+			if (hoveredGameOverAction != GameOverAction.NONE) {
+				hoveredGameOverAction = GameOverAction.NONE;
+				setCursor(Cursor.getDefaultCursor());
+				repaint();
+			}
+			return;
+		}
+
+		GameOverAction nextHover = GameOverAction.NONE;
+		if (getGameOverRestartButtonBounds().contains(mouseX, mouseY)) {
+			nextHover = GameOverAction.RESTART;
+		} else if (getGameOverMenuButtonBounds().contains(mouseX, mouseY)) {
+			nextHover = GameOverAction.MENU;
+		}
+
+		if (nextHover != hoveredGameOverAction) {
+			hoveredGameOverAction = nextHover;
+			setCursor(nextHover == GameOverAction.NONE ? Cursor.getDefaultCursor() : Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+			repaint();
+		}
 	}
 
 	// UI-01: Chuyển trạng thái màn hình có hiệu ứng fade.
@@ -1128,32 +1182,32 @@ public class GamePanel extends JPanel {
 
 	/**
 	 * DEV04 - UC4.2 + UC4.3 + UC4.4:
-	 * Vẽ màn hình Game Over theo hướng hiện đại, có dấu tiếng Việt đầy đủ.
-	 * - UC4.2: hiển thị trạng thái kết thúc và lý do thua.
-	 * - UC4.3: hiển thị điểm hiện tại, điểm cao và kỷ lục mới nếu có.
-	 * - UC4.4: cung cấp nút Chơi lại và Menu chính.
+	 * Màn hình Game Over bản Premium:
+	 * - UC4.2: hiển thị lý do thua và trạng thái kết thúc.
+	 * - UC4.3: hiển thị điểm hiện tại, điểm cao, kỷ lục mới và tiến độ phá kỷ lục.
+	 * - UC4.4: hỗ trợ nút CHƠI LẠI / MENU CHÍNH có hover bằng chuột.
 	 *
-	 * Lưu ý:
-	 * - Đã bỏ dòng footer "UC04..." để giao diện sạch hơn.
-	 * - Bố cục được tách rõ để tránh đè chữ, đè nút.
+	 * Nâng cấp chính:
+	 * - Bỏ dòng footer UC04 để giao diện sạch.
+	 * - Chuyển tiến độ phá kỷ lục xuống khu vực dưới cùng, thay cho badge đánh giá.
+	 * - Thêm hover effect cho nút hành động.
+	 * - Chia layout thành vùng rõ ràng để không bị đè chữ.
 	 */
 	private void drawGameOverOverlay(Graphics2D g2d) {
 		long now = System.currentTimeMillis();
 		float pulse = (float) ((Math.sin(now / 260.0) + 1.0) / 2.0);
-		int pulseAlpha = 24 + (int) (pulse * 34);
+		int pulseAlpha = 22 + (int) (pulse * 32);
 
-		// Nền tối vừa đủ để làm nổi card Game Over.
-		g2d.setColor(new Color(0, 0, 0, 210));
+		g2d.setColor(new Color(0, 0, 0, 212));
 		g2d.fillRect(0, 0, GAME_AREA_WIDTH, GAME_AREA_HEIGHT);
 
-		// Scanline nhẹ, giữ phong cách neon nhưng không gây rối mắt.
-		g2d.setColor(new Color(255, 255, 255, 6));
+		g2d.setColor(new Color(255, 255, 255, 5));
 		for (int y = 0; y < GAME_AREA_HEIGHT; y += 9) {
 			g2d.drawLine(0, y, GAME_AREA_WIDTH, y);
 		}
 
 		// DEV04 - UC4.3 Save High Score:
-		// Lấy điểm hiện tại, điểm cao và thống kê phiên chơi từ ScoreManager/GameModel.
+		// Lấy dữ liệu tổng kết từ Model/ScoreManager để View chỉ render, không xử lý nghiệp vụ.
 		int currentScore = 0;
 		int highScore = 0;
 		int highScoreDelta = 0;
@@ -1189,49 +1243,49 @@ public class GamePanel extends JPanel {
 			}
 		}
 
-		int cardW = 680;
-		int cardH = 510;
+		int cardW = 700;
+		int cardH = 530;
 		int cardX = (GAME_AREA_WIDTH - cardW) / 2;
-		int cardY = 42;
+		int cardY = 34;
 
 		// Glow ngoài card.
 		g2d.setColor(new Color(255, 55, 120, pulseAlpha));
-		g2d.fillRoundRect(cardX - 12, cardY - 12, cardW + 24, cardH + 24, 34, 34);
+		g2d.fillRoundRect(cardX - 12, cardY - 12, cardW + 24, cardH + 24, 36, 36);
 
-		g2d.setColor(new Color(0, 255, 210, 14 + pulseAlpha / 3));
-		g2d.fillRoundRect(cardX - 4, cardY - 4, cardW + 8, cardH + 8, 28, 28);
+		g2d.setColor(new Color(0, 255, 210, 12 + pulseAlpha / 3));
+		g2d.fillRoundRect(cardX - 4, cardY - 4, cardW + 8, cardH + 8, 30, 30);
 
 		GradientPaint panelPaint = new GradientPaint(
 				cardX, cardY,
-				new Color(18, 26, 48, 248),
+				new Color(18, 26, 48, 250),
 				cardX, cardY + cardH,
-				new Color(7, 11, 25, 248)
+				new Color(6, 10, 23, 250)
 		);
 		g2d.setPaint(panelPaint);
-		g2d.fillRoundRect(cardX, cardY, cardW, cardH, 28, 28);
+		g2d.fillRoundRect(cardX, cardY, cardW, cardH, 30, 30);
 
-		g2d.setColor(new Color(255, 80, 125, 220));
+		g2d.setColor(new Color(255, 80, 125, 225));
 		g2d.setStroke(new BasicStroke(3f));
-		g2d.drawRoundRect(cardX, cardY, cardW, cardH, 28, 28);
+		g2d.drawRoundRect(cardX, cardY, cardW, cardH, 30, 30);
 
-		g2d.setColor(new Color(255, 255, 255, 40));
+		g2d.setColor(new Color(255, 255, 255, 42));
 		g2d.setStroke(new BasicStroke(1.2f));
-		g2d.drawRoundRect(cardX + 10, cardY + 10, cardW - 20, cardH - 20, 22, 22);
+		g2d.drawRoundRect(cardX + 10, cardY + 10, cardW - 20, cardH - 20, 24, 24);
 
 		// Vùng 1: Tiêu đề + lý do thua.
-		drawText(g2d, "GAME OVER", GAME_AREA_WIDTH / 2, cardY + 74, 48, new Color(255, 95, 130));
-		drawGameOverReasonPill(g2d, "Lý do: " + reason, GAME_AREA_WIDTH / 2, cardY + 106);
+		drawText(g2d, "GAME OVER", GAME_AREA_WIDTH / 2, cardY + 72, 48, new Color(255, 95, 130));
+		drawGameOverReasonPill(g2d, "Lý do: " + reason, GAME_AREA_WIDTH / 2, cardY + 104);
 
 		if (isNewRecord) {
 			String badgeText = highScoreDelta > 0 ? "KỶ LỤC MỚI  +" + highScoreDelta : "KỶ LỤC MỚI!";
-			drawNewRecordBadge(g2d, badgeText, GAME_AREA_WIDTH / 2, cardY + 136, pulseAlpha);
+			drawNewRecordBadge(g2d, badgeText, GAME_AREA_WIDTH / 2, cardY + 132, pulseAlpha);
 		}
 
 		// Vùng 2: Điểm hiện tại + điểm cao.
-		int statY = cardY + 160;
-		int statW = 240;
+		int statY = cardY + 156;
+		int statW = 245;
 		int statH = 82;
-		int statGap = 34;
+		int statGap = 38;
 		int leftStatX = GAME_AREA_WIDTH / 2 - statW - statGap / 2;
 		int rightStatX = GAME_AREA_WIDTH / 2 + statGap / 2;
 
@@ -1239,55 +1293,53 @@ public class GamePanel extends JPanel {
 		drawGameOverStatBox(g2d, "ĐIỂM CAO", String.valueOf(highScore), rightStatX, statY, statW, statH, new Color(255, 220, 80));
 
 		// Vùng 3: Thống kê phiên chơi.
-		int summaryX = cardX + 52;
-		int summaryY = cardY + 262;
-		int summaryW = cardW - 104;
-		int summaryH = 136;
+		int summaryX = cardX + 58;
+		int summaryY = cardY + 258;
+		int summaryW = cardW - 116;
+		int summaryH = 128;
 		drawGameOverSummaryPanel(g2d, summaryX, summaryY, summaryW, summaryH);
 
-		drawGameOverSummaryRow(g2d, "Thời gian sống", formatDuration(survivalSeconds), summaryX + 24, summaryY + 34, summaryX + summaryW / 2 + 18, summaryY + 34);
-		drawGameOverSummaryRow(g2d, "Mồi đã ăn", foodEaten + "  (đặc biệt " + specialFoodEaten + ")", summaryX + 24, summaryY + 64, summaryX + summaryW / 2 + 18, summaryY + 64);
-		drawGameOverSummaryRow(g2d, "Combo cao nhất", "x" + Math.max(maxCombo, 1), summaryX + 24, summaryY + 94, summaryX + summaryW / 2 + 18, summaryY + 94);
-		drawGameOverSummaryRow(g2d, "Chế độ / Độ khó", modeText + " / " + difficultyText, summaryX + 24, summaryY + 124, summaryX + summaryW / 2 + 18, summaryY + 124);
+		drawGameOverSummaryRow(g2d, "Thời gian sống", formatDuration(survivalSeconds), summaryX + 24, summaryY + 32, summaryX + summaryW / 2 + 20, summaryY + 32);
+		drawGameOverSummaryRow(g2d, "Mồi đã ăn", foodEaten + "  (đặc biệt " + specialFoodEaten + ")", summaryX + 24, summaryY + 60, summaryX + summaryW / 2 + 20, summaryY + 60);
+		drawGameOverSummaryRow(g2d, "Combo cao nhất", "x" + Math.max(maxCombo, 1), summaryX + 24, summaryY + 88, summaryX + summaryW / 2 + 20, summaryY + 88);
+		drawGameOverSummaryRow(g2d, "Chế độ / Độ khó", modeText + " / " + difficultyText, summaryX + 24, summaryY + 116, summaryX + summaryW / 2 + 20, summaryY + 116);
 
-		// Vùng 4: Đánh giá, tách riêng khỏi nút để không bị đè.
-		String rating = buildPerformanceRating(currentScore, survivalSeconds, foodEaten, maxCombo);
-		Color ratingColor = getPerformanceRatingColor(currentScore, maxCombo);
-		drawGameOverRatingBadge(g2d, rating, GAME_AREA_WIDTH / 2, cardY + 420, ratingColor);
+		// Vùng 4: Thay badge "ĐÁNH GIÁ" bằng thẻ tiến độ kỷ lục ở phía dưới.
+		drawBottomHighScoreProgressCard(g2d, currentScore, highScore, cardX + 78, cardY + 404, cardW - 156, 40);
 
-		// Vùng 5: Hành động theo UC4.4 Restart Game.
+		// Vùng 5: Nút hành động có hover.
 		Rectangle restartButton = getGameOverRestartButtonBounds();
 		Rectangle menuButton = getGameOverMenuButtonBounds();
 
-		drawGameOverButton(g2d, "CHƠI LẠI", "ENTER / R", restartButton, new Color(0, 255, 180));
-		drawGameOverButton(g2d, "MENU CHÍNH", "ESC", menuButton, new Color(120, 190, 255));
+		drawGameOverButton(g2d, "CHƠI LẠI", "ENTER / R", restartButton, new Color(0, 255, 180), hoveredGameOverAction == GameOverAction.RESTART);
+		drawGameOverButton(g2d, "MENU CHÍNH", "ESC", menuButton, new Color(120, 190, 255), hoveredGameOverAction == GameOverAction.MENU);
 	}
 
 	private Rectangle getGameOverRestartButtonBounds() {
-		int cardW = 680;
+		int cardW = 700;
 		int cardX = (GAME_AREA_WIDTH - cardW) / 2;
-		int cardY = 42;
-		return new Rectangle(cardX + 92, cardY + 440, 220, 58);
+		int cardY = 34;
+		return new Rectangle(cardX + 100, cardY + 458, 220, 58);
 	}
 
 	private Rectangle getGameOverMenuButtonBounds() {
-		int cardW = 680;
+		int cardW = 700;
 		int cardX = (GAME_AREA_WIDTH - cardW) / 2;
-		int cardY = 42;
-		return new Rectangle(cardX + 368, cardY + 440, 220, 58);
+		int cardY = 34;
+		return new Rectangle(cardX + 380, cardY + 458, 220, 58);
 	}
 
 	private void drawGameOverReasonPill(Graphics2D g2d, String text, int centerX, int y) {
 		g2d.setFont(new Font("SansSerif", Font.BOLD, 16));
 		FontMetrics fm = g2d.getFontMetrics();
-		int pillW = Math.max(280, fm.stringWidth(text) + 44);
+		int pillW = Math.max(290, fm.stringWidth(text) + 46);
 		int pillH = 34;
 		int pillX = centerX - pillW / 2;
 
 		g2d.setColor(new Color(255, 255, 255, 14));
 		g2d.fillRoundRect(pillX, y - 24, pillW, pillH, 18, 18);
 
-		g2d.setColor(new Color(255, 105, 135, 100));
+		g2d.setColor(new Color(255, 105, 135, 105));
 		g2d.setStroke(new BasicStroke(1.4f));
 		g2d.drawRoundRect(pillX, y - 24, pillW, pillH, 18, 18);
 
@@ -1319,7 +1371,7 @@ public class GamePanel extends JPanel {
 		g2d.setColor(new Color(10, 18, 32, 235));
 		g2d.fillRoundRect(x, y, w, h, 18, 18);
 
-		g2d.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 170));
+		g2d.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 175));
 		g2d.setStroke(new BasicStroke(2f));
 		g2d.drawRoundRect(x, y, w, h, 18, 18);
 
@@ -1330,6 +1382,32 @@ public class GamePanel extends JPanel {
 		g2d.setFont(new Font("Consolas", Font.BOLD, 34));
 		g2d.setColor(accent);
 		drawCenteredString(g2d, value, x + w / 2, y + 61);
+	}
+
+	private void drawScoreProgressBar(Graphics2D g2d, int currentScore, int highScore, int x, int y, int width, int height) {
+		int targetScore = Math.max(highScore, 1);
+		double ratio = Math.min(1.0, currentScore / (double) targetScore);
+		int fillWidth = (int) Math.round(width * ratio);
+
+		g2d.setFont(new Font("SansSerif", Font.BOLD, 12));
+		g2d.setColor(new Color(190, 205, 225));
+		String label = highScore <= 0
+				? "Tiến độ kỷ lục: chưa có điểm cao"
+				: "Tiến độ phá kỷ lục: " + Math.min(100, (int) Math.round(ratio * 100)) + "%";
+		g2d.drawString(label, x, y - 8);
+
+		g2d.setColor(new Color(255, 255, 255, 28));
+		g2d.fillRoundRect(x, y, width, height, 12, 12);
+
+		g2d.setColor(new Color(0, 255, 210, 80));
+		g2d.fillRoundRect(x - 2, y - 2, Math.max(4, fillWidth + 4), height + 4, 14, 14);
+
+		g2d.setColor(new Color(0, 255, 210));
+		g2d.fillRoundRect(x, y, Math.max(0, fillWidth), height, 12, 12);
+
+		g2d.setColor(new Color(255, 255, 255, 65));
+		g2d.setStroke(new BasicStroke(1.2f));
+		g2d.drawRoundRect(x, y, width, height, 12, 12);
 	}
 
 	private void drawGameOverSummaryPanel(Graphics2D g2d, int x, int y, int w, int h) {
@@ -1355,6 +1433,61 @@ public class GamePanel extends JPanel {
 		g2d.setFont(new Font("Consolas", Font.BOLD, 15));
 		g2d.setColor(new Color(238, 246, 255));
 		g2d.drawString(leftValue, rightX, rightY);
+	}
+
+
+	private void drawBottomHighScoreProgressCard(Graphics2D g2d, int currentScore, int highScore, int x, int y, int width, int height) {
+		int safeHighScore = Math.max(highScore, 1);
+		double ratio = Math.min(1.0, currentScore / (double) safeHighScore);
+		int fillWidth = (int) Math.round((width - 22) * ratio);
+
+		String title = "TIẾN ĐỘ KỶ LỤC";
+		String percentText = highScore <= 0
+				? "100%"
+				: Math.min(100, (int) Math.round(ratio * 100)) + "%";
+		String detailText = currentScore >= highScore
+				? "Bạn đã chạm / vượt kỷ lục!"
+				: "Còn " + (highScore - currentScore) + " điểm nữa để phá kỷ lục";
+
+		g2d.setColor(new Color(120, 190, 255, 32));
+		g2d.fillRoundRect(x - 4, y - 4, width + 8, height + 8, 18, 18);
+
+		g2d.setColor(new Color(12, 18, 30, 236));
+		g2d.fillRoundRect(x, y, width, height, 16, 16);
+
+		g2d.setColor(new Color(120, 190, 255));
+		g2d.setStroke(new BasicStroke(2f));
+		g2d.drawRoundRect(x, y, width, height, 16, 16);
+
+		g2d.setFont(new Font("SansSerif", Font.BOLD, 14));
+		g2d.setColor(new Color(185, 215, 255));
+		g2d.drawString(title, x + 16, y + 17);
+
+		g2d.setFont(new Font("Consolas", Font.BOLD, 13));
+		FontMetrics percentFm = g2d.getFontMetrics();
+		g2d.setColor(Color.WHITE);
+		g2d.drawString(percentText, x + width - percentFm.stringWidth(percentText) - 16, y + 17);
+
+		int barX = x + 16;
+		int barY = y + 22;
+		int barW = width - 32;
+		int barH = 9;
+
+		g2d.setColor(new Color(255, 255, 255, 24));
+		g2d.fillRoundRect(barX, barY, barW, barH, 10, 10);
+
+		g2d.setColor(new Color(0, 255, 210, 75));
+		g2d.fillRoundRect(barX - 1, barY - 1, Math.max(3, fillWidth + 2), barH + 2, 10, 10);
+
+		g2d.setColor(new Color(0, 255, 210));
+		g2d.fillRoundRect(barX, barY, Math.max(0, fillWidth), barH, 10, 10);
+
+		g2d.setColor(new Color(255, 255, 255, 45));
+		g2d.drawRoundRect(barX, barY, barW, barH, 10, 10);
+
+		g2d.setFont(new Font("SansSerif", Font.PLAIN, 12));
+		g2d.setColor(new Color(220, 230, 245));
+		g2d.drawString(detailText, x + 16, y + height - 8);
 	}
 
 	private void drawGameOverRatingBadge(Graphics2D g2d, String text, int centerX, int y, Color accent) {
@@ -1398,27 +1531,35 @@ public class GamePanel extends JPanel {
 		return String.format("%02d:%02d", minutes, remainingSeconds);
 	}
 
-	private void drawGameOverButton(Graphics2D g2d, String title, String hint, Rectangle rect, Color accent) {
+	private void drawGameOverButton(Graphics2D g2d, String title, String hint, Rectangle rect, Color accent, boolean hovered) {
 		long now = System.currentTimeMillis();
-		int glowAlpha = 28 + (int) (((Math.sin(now / 180.0) + 1.0) / 2.0) * 35);
+		int glowAlpha = 30 + (int) (((Math.sin(now / 180.0) + 1.0) / 2.0) * 36);
+		int expand = hovered ? 4 : 0;
 
-		g2d.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), glowAlpha));
-		g2d.fillRoundRect(rect.x - 5, rect.y - 5, rect.width + 10, rect.height + 10, 20, 20);
+		Rectangle drawRect = new Rectangle(rect.x - expand, rect.y - expand, rect.width + expand * 2, rect.height + expand * 2);
 
-		g2d.setColor(new Color(14, 24, 34, 238));
-		g2d.fillRoundRect(rect.x, rect.y, rect.width, rect.height, 18, 18);
+		g2d.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), hovered ? glowAlpha + 35 : glowAlpha));
+		g2d.fillRoundRect(drawRect.x - 5, drawRect.y - 5, drawRect.width + 10, drawRect.height + 10, 22, 22);
+
+		g2d.setColor(hovered ? new Color(18, 34, 45, 245) : new Color(14, 24, 34, 238));
+		g2d.fillRoundRect(drawRect.x, drawRect.y, drawRect.width, drawRect.height, 18, 18);
 
 		g2d.setColor(accent);
-		g2d.setStroke(new BasicStroke(2.2f));
-		g2d.drawRoundRect(rect.x, rect.y, rect.width, rect.height, 18, 18);
+		g2d.setStroke(new BasicStroke(hovered ? 3.0f : 2.2f));
+		g2d.drawRoundRect(drawRect.x, drawRect.y, drawRect.width, drawRect.height, 18, 18);
 
-		g2d.setFont(new Font("SansSerif", Font.BOLD, 19));
+		if (hovered) {
+			g2d.setColor(new Color(255, 255, 255, 35));
+			g2d.drawRoundRect(drawRect.x + 6, drawRect.y + 6, drawRect.width - 12, drawRect.height - 12, 14, 14);
+		}
+
+		g2d.setFont(new Font("SansSerif", Font.BOLD, hovered ? 20 : 19));
 		g2d.setColor(Color.WHITE);
-		drawCenteredString(g2d, title, rect.x + rect.width / 2, rect.y + 24);
+		drawCenteredString(g2d, title, drawRect.x + drawRect.width / 2, drawRect.y + 24 + (hovered ? 1 : 0));
 
 		g2d.setFont(new Font("Consolas", Font.BOLD, 12));
 		g2d.setColor(new Color(205, 218, 235));
-		drawCenteredString(g2d, hint, rect.x + rect.width / 2, rect.y + 43);
+		drawCenteredString(g2d, hint, drawRect.x + drawRect.width / 2, drawRect.y + 43 + (hovered ? 1 : 0));
 	}
 
 	private void drawCenteredString(Graphics2D g2d, String text, int centerX, int y) {

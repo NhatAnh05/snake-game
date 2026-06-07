@@ -119,6 +119,9 @@ public class GamePanel extends JPanel {
 	// Giúp ngăn chặn việc hệ điều hành tự ý chặn phím và sinh ra mã 229 (VK_PROCESSKEY).
 	// =========================================================================
 	private void setupKeyboardActions() {
+		// [DEV02 - UC02] - LÊ TUẤN ANH
+		// Các log debug trong Key Bindings đã được loại bỏ để khi chạy game/quay video demo
+		// màn hình Output không bị nhiễu, nhưng luồng chuyển tiếp input sang InputHandler vẫn giữ nguyên.
 		InputMap inputMap = getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
 		ActionMap actionMap = getActionMap();
 
@@ -166,7 +169,6 @@ public class GamePanel extends JPanel {
 		actionMap.put("ui01-left", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				System.out.println("[KeyBindings] -> Bắt trúng phím TRÁI / A");
 				if (currentModel != null && (currentModel.getCurrentState() == GameState.MENU || currentModel.getCurrentState() == GameState.SETTINGS)) {
 					handleUiNavigation(-1);
 				} else if (inputHandler != null) {
@@ -181,7 +183,6 @@ public class GamePanel extends JPanel {
 		actionMap.put("ui01-up", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				System.out.println("[KeyBindings] -> Bắt trúng phím LÊN / W");
 				if (currentModel != null && (currentModel.getCurrentState() == GameState.MENU || currentModel.getCurrentState() == GameState.SETTINGS)) {
 					handleUiNavigation(-1);
 				} else if (inputHandler != null) {
@@ -195,7 +196,6 @@ public class GamePanel extends JPanel {
 		actionMap.put("ui01-right", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				System.out.println("[KeyBindings] -> Bắt trúng phím PHẢI / D");
 				if (currentModel != null && (currentModel.getCurrentState() == GameState.MENU || currentModel.getCurrentState() == GameState.SETTINGS)) {
 					handleUiNavigation(1);
 				} else if (inputHandler != null) {
@@ -209,7 +209,6 @@ public class GamePanel extends JPanel {
 		actionMap.put("ui01-down", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				System.out.println("[KeyBindings] -> Bắt trúng phím XUỐNG / S");
 				if (currentModel != null && (currentModel.getCurrentState() == GameState.MENU || currentModel.getCurrentState() == GameState.SETTINGS)) {
 					handleUiNavigation(1);
 				} else if (inputHandler != null) {
@@ -221,7 +220,6 @@ public class GamePanel extends JPanel {
 		actionMap.put("ui01-confirm", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				System.out.println("[KeyBindings] -> Bắt trúng phím ENTER");
 				if (currentModel != null && (currentModel.getCurrentState() == GameState.MENU || currentModel.getCurrentState() == GameState.SETTINGS)) {
 					handleUiConfirm();
 				} else if (inputHandler != null) {
@@ -233,7 +231,6 @@ public class GamePanel extends JPanel {
 		actionMap.put("ui01-escape", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				System.out.println("[KeyBindings] -> Bắt trúng phím ESC");
 				if (currentModel != null) {
 					if (currentModel.getCurrentState() == GameState.SETTINGS) {
 						startTransition(GameState.MENU);
@@ -248,7 +245,6 @@ public class GamePanel extends JPanel {
 		actionMap.put("ui01-pause", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				System.out.println("[KeyBindings] -> Bắt trúng phím P từ luồng bảo vệ.");
 				if (inputHandler != null) {
 					inputHandler.keyPressed(new KeyEvent(GamePanel.this, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_P, 'P'));
 				}
@@ -258,7 +254,6 @@ public class GamePanel extends JPanel {
 		actionMap.put("ui01-restart", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				System.out.println("[KeyBindings] -> Bắt trúng phím R / Restart");
 				if (inputHandler != null) {
 					inputHandler.keyPressed(new KeyEvent(GamePanel.this, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_R, 'R'));
 				}
@@ -1189,7 +1184,7 @@ public class GamePanel extends JPanel {
 	 *
 	 * Nâng cấp chính:
 	 * - Bỏ dòng footer UC04 để giao diện sạch.
-		 * - Thêm hover effect cho nút hành động.
+	 * - Thêm hover effect cho nút hành động.
 	 * - Chia layout thành vùng rõ ràng để không bị đè chữ.
 	 */
 	private void drawGameOverOverlay(Graphics2D g2d) {

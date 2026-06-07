@@ -444,6 +444,4 @@ public class GameController {
 
 		return baseDelay;
 	}
-
-
 }

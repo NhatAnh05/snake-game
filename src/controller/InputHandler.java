@@ -18,7 +18,8 @@ public class InputHandler extends KeyAdapter {
         currentKeyCode = event.getKeyCode();
         char keyChar = Character.toLowerCase(event.getKeyChar());
 
-        System.out.println("DEBUG: KeyCode = " + currentKeyCode + " | KeyChar = " + keyChar);
+        // [DEV02 - UC02] - LÊ TUẤN ANH
+        // Bỏ log debug ra console để khi quay video demo và chạy game không bị nhiễu màn hình Output.
 
         // =========================================================================
         // [UC05] - NHẬT ANH

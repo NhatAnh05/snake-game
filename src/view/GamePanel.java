@@ -1096,7 +1096,7 @@ public class GamePanel extends JPanel {
 
 		g2d.setFont(new Font("SansSerif", Font.PLAIN, 14));
 		g2d.setColor(new Color(210, 220, 235));
-		drawCenteredString(g2d, "Hoặc dùng W / A / S / D", x + w / 2, controlY + 128);
+		drawCenteredString(g2d, "Hoặc dùng W / A / S / D", x + w / 2, controlY + 136);
 
 		// =========================
 		// CARD 3: HƯỚNG DẪN LUẬT CHƠI KHÁC
@@ -1189,8 +1189,7 @@ public class GamePanel extends JPanel {
 	 *
 	 * Nâng cấp chính:
 	 * - Bỏ dòng footer UC04 để giao diện sạch.
-	 * - Chuyển tiến độ phá kỷ lục xuống khu vực dưới cùng, thay cho badge đánh giá.
-	 * - Thêm hover effect cho nút hành động.
+		 * - Thêm hover effect cho nút hành động.
 	 * - Chia layout thành vùng rõ ràng để không bị đè chữ.
 	 */
 	private void drawGameOverOverlay(Graphics2D g2d) {
@@ -1244,7 +1243,7 @@ public class GamePanel extends JPanel {
 		}
 
 		int cardW = 700;
-		int cardH = 530;
+		int cardH = 490;
 		int cardX = (GAME_AREA_WIDTH - cardW) / 2;
 		int cardY = 34;
 
@@ -1304,10 +1303,7 @@ public class GamePanel extends JPanel {
 		drawGameOverSummaryRow(g2d, "Combo cao nhất", "x" + Math.max(maxCombo, 1), summaryX + 24, summaryY + 88, summaryX + summaryW / 2 + 20, summaryY + 88);
 		drawGameOverSummaryRow(g2d, "Chế độ / Độ khó", modeText + " / " + difficultyText, summaryX + 24, summaryY + 116, summaryX + summaryW / 2 + 20, summaryY + 116);
 
-		// Vùng 4: Thay badge "ĐÁNH GIÁ" bằng thẻ tiến độ kỷ lục ở phía dưới.
-		drawBottomHighScoreProgressCard(g2d, currentScore, highScore, cardX + 78, cardY + 404, cardW - 156, 40);
-
-		// Vùng 5: Nút hành động có hover.
+		// Vùng 4: Nút hành động có hover.
 		Rectangle restartButton = getGameOverRestartButtonBounds();
 		Rectangle menuButton = getGameOverMenuButtonBounds();
 
@@ -1319,14 +1315,14 @@ public class GamePanel extends JPanel {
 		int cardW = 700;
 		int cardX = (GAME_AREA_WIDTH - cardW) / 2;
 		int cardY = 34;
-		return new Rectangle(cardX + 100, cardY + 458, 220, 58);
+		return new Rectangle(cardX + 100, cardY + 414, 220, 58);
 	}
 
 	private Rectangle getGameOverMenuButtonBounds() {
 		int cardW = 700;
 		int cardX = (GAME_AREA_WIDTH - cardW) / 2;
 		int cardY = 34;
-		return new Rectangle(cardX + 380, cardY + 458, 220, 58);
+		return new Rectangle(cardX + 380, cardY + 414, 220, 58);
 	}
 
 	private void drawGameOverReasonPill(Graphics2D g2d, String text, int centerX, int y) {
